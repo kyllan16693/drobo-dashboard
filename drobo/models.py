@@ -19,8 +19,8 @@ def human_bytes(num: int, binary: bool = False) -> str:
     if num is None:
         return "-"
     step = 1024.0 if binary else 1000.0
-    units = ("B", "KiB", "MiB", "GiB", "TiB", "PiB") if binary else (
-        "B", "KB", "MB", "GB", "TB", "PB"
+    units = (
+        ("B", "KiB", "MiB", "GiB", "TiB", "PiB") if binary else ("B", "KB", "MB", "GB", "TB", "PB")
     )
     value = float(num)
     for unit in units:

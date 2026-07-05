@@ -71,7 +71,7 @@ These touch the physical NAS holding real data:
 - Any **write/format/redundancy-change** on the Drobo, or expanding
   `control.py` beyond identify/restart.
 - **Installing anything on the Drobo** (DroboApps, smartctl, cron, services) —
-  researched and declined; see `RESEARCH-extraction.md`.
+  researched and declined; see `docs/RESEARCH-extraction.md`.
 - **Restarting the Drobo mid-relayout** (guard already exists — don't bypass).
 - Pulling/reordering drives, or anything in the parent repo's
   [`../.cursor/rules/homelab.mdc`](../.cursor/rules/homelab.mdc) denylist
@@ -79,7 +79,8 @@ These touch the physical NAS holding real data:
 
 ## Before you finish
 
-- Lint touched Python/JS.
+- Lint touched Python: `uv run ruff check . && uv run ruff format --check .`
+- Typecheck: `uv run mypy`
 - If you changed parsing or capacity math, validate against
   `tests/sample_5n.xml` and re-check the invariants above.
 - If you changed device facts, update [`docs/DROBO-5N.md`](docs/DROBO-5N.md).

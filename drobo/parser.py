@@ -184,7 +184,9 @@ def parse(xml_text: str) -> DroboStatus:
     used_pct = round((used / total) * 100, 2) if total else 0.0
 
     droboapps = root.find("DroboApps")
-    droboapps_enabled = _int(droboapps, "DNASDroboAppsEnabled") == 1 if droboapps is not None else False
+    droboapps_enabled = (
+        _int(droboapps, "DNASDroboAppsEnabled") == 1 if droboapps is not None else False
+    )
 
     model = _text(root, "mModel") or _text(root, "mName")
 

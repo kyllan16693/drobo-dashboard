@@ -80,8 +80,9 @@ def storage_breakdown(status: DroboStatus) -> dict:
     # everything else (reserved-for-expansion + a little management overhead we
     # can't separate). Anchor "usable" to the device's own protected total so
     # used+free is always exact, and derive the two remaining slices from it.
-    parity_reserve = min(protection_reserve(caps, redundancy_level),
-                         max(0, raw_physical - protected_total))
+    parity_reserve = min(
+        protection_reserve(caps, redundancy_level), max(0, raw_physical - protected_total)
+    )
     unallocated = max(0, raw_physical - parity_reserve - protected_total)
     pie_total = protected_total + unallocated
 

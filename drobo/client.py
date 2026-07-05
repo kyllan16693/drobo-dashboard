@@ -66,7 +66,7 @@ def read_raw(
         while _DOC_CLOSE not in buf:
             try:
                 chunk = conn.recv(_CHUNK)
-            except socket.timeout as exc:
+            except TimeoutError as exc:
                 raise DroboUnreachable(
                     f"timed out reading status from {host}:{port} after {timeout}s"
                 ) from exc
@@ -84,9 +84,7 @@ def read_raw(
 
     close_idx = buf.find(_DOC_CLOSE)
     if close_idx == -1:
-        raise DroboUnreachable(
-            f"no complete <ESATMUpdate> document received from {host}:{port}"
-        )
+        raise DroboUnreachable(f"no complete <ESATMUpdate> document received from {host}:{port}")
     end = close_idx + len(_DOC_CLOSE)
 
     # Drop the leading binary "DRINASD" framing by starting at the XML

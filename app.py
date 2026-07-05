@@ -29,24 +29,20 @@ load_dotenv(Path(__file__).with_name(".env"))
 
 from flask import Flask, jsonify, render_template, request
 
-from drobo import DEFAULT_PORT
-from drobo.poller import Poller
-
 # Additive imports for the /stats details page + /api/raw endpoint.
-from drobo import codes
-from drobo.client import DroboUnreachable, read_raw
-from drobo.rawdump import RawDumpError, raw_dump
-
 # Additive imports for the /settings control page (port-5001 command channel).
-from drobo import control
+from drobo import DEFAULT_PORT, codes, control
 
 # Trends: local SQLite history, capacity breakdown, reference tables, and the
 # SSH-based network throughput monitor.
 from drobo import reference as reference_mod
 from drobo import storage as storage_mod
+from drobo.client import DroboUnreachable, read_raw
 from drobo.hardware import HardwareMonitor
 from drobo.history import History
 from drobo.models import human_bytes
+from drobo.poller import Poller
+from drobo.rawdump import RawDumpError, raw_dump
 from drobo.throughput import ThroughputMonitor
 
 
@@ -86,6 +82,10 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _env_bool(name: str, default: str = "0") -> bool:
+    return os.environ.get(name, default).strip().lower() in ("1", "true", "yes", "on")
+
+
 def _req_hours(default: float, max_hours: float = 24 * 180) -> float:
     """A finite, positive ``hours`` query param, clamped to a sane window.
 
@@ -118,13 +118,13 @@ WEB_PORT = _env_int("WEB_PORT", 8765)
 # degrades gracefully if auth fails or the device is offline.
 DROBO_USERNAME = os.environ.get("DROBO_USERNAME") or None
 DROBO_PASSWORD = os.environ.get("DROBO_PASSWORD") or None
-SSH_THROUGHPUT = os.environ.get("DROBO_SSH_THROUGHPUT", "1").strip().lower() in ("1", "true", "yes", "on")
+SSH_THROUGHPUT = _env_bool("DROBO_SSH_THROUGHPUT", "1")
 THROUGHPUT_INTERVAL = _env_float("DROBO_THROUGHPUT_INTERVAL", 5.0)
 NET_IFACE = os.environ.get("DROBO_NET_IFACE") or None
 
 # SSH hardware telemetry (CPU/RAM/load/disk-IO). Same creds; same graceful
 # degradation. Enabled by default when credentials are present.
-SSH_HARDWARE = os.environ.get("DROBO_SSH_HARDWARE", "1").strip().lower() in ("1", "true", "yes", "on")
+SSH_HARDWARE = _env_bool("DROBO_SSH_HARDWARE", "1")
 HARDWARE_INTERVAL = _env_float("DROBO_HARDWARE_INTERVAL", 5.0)
 
 # Local history DB (machine-local state; gitignored).
@@ -145,8 +145,11 @@ def _record_history(status) -> None:
     events = history.sync_errors([s.to_dict() for s in status.slots], ts=status.fetched_at)
     for ev in events:
         if ev["kind"] == "increase":
-            print(f"[drobo] NEW drive errors: slot {ev['slot']} {ev['make']} "
-                  f"{ev['prev_count']} -> {ev['new_count']} (+{ev['delta']})")
+            print(
+                f"[drobo] NEW drive errors: slot {ev['slot']} {ev['make']} "
+                f"{ev['prev_count']} -> {ev['new_count']} (+{ev['delta']})"
+            )
+
 
 poller = Poller(DROBO_HOST, DROBO_PORT, interval=POLL_INTERVAL, on_poll=_record_history)
 
@@ -173,7 +176,7 @@ hardware = HardwareMonitor(
 # port (5001). It is OFF by default: with the flag unset the page is a read-only
 # viewer and no command socket is ever opened. A per-process token is required
 # on every write POST as a basic same-origin guard.
-ENABLE_CONTROL = os.environ.get("DROBO_ENABLE_CONTROL", "0").strip().lower() in ("1", "true", "yes", "on")
+ENABLE_CONTROL = _env_bool("DROBO_ENABLE_CONTROL", "0")
 CONTROL_TOKEN = secrets.token_urlsafe(24)
 
 
@@ -181,6 +184,7 @@ def _current_serial() -> str | None:
     """The Drobo serial from the cached snapshot (control commands need it)."""
     st = poller.snapshot().get("status")
     return st.get("device_serial") if st else None
+
 
 # /api/raw does a live per-request fetch. Serialise + briefly cache it so a
 # burst of requests (or a hung device tying up a worker for the full socket
@@ -271,7 +275,11 @@ def create_app() -> Flask:
             except Exception:  # never leak an HTML 500 on this unauth endpoint
                 app.logger.exception("unexpected error building /api/raw dump")
                 return jsonify(
-                    {"error": "internal error building status dump", "host": DROBO_HOST, "port": DROBO_PORT}
+                    {
+                        "error": "internal error building status dump",
+                        "host": DROBO_HOST,
+                        "port": DROBO_PORT,
+                    }
                 ), 502
             payload = {
                 "host": DROBO_HOST,
@@ -304,31 +312,37 @@ def create_app() -> Flask:
         status_obj = poller.current_status()
         snap = poller.snapshot()
         if status_obj is None:
-            return jsonify({
-                "available": False,
+            return jsonify(
+                {
+                    "available": False,
+                    "reachable": snap["reachable"],
+                    "stale": snap["stale"],
+                    "last_error": snap["last_error"],
+                }
+            )
+        return jsonify(
+            {
+                "available": True,
                 "reachable": snap["reachable"],
                 "stale": snap["stale"],
-                "last_error": snap["last_error"],
-            })
-        return jsonify({
-            "available": True,
-            "reachable": snap["reachable"],
-            "stale": snap["stale"],
-            "fetched_at": snap["last_success"],
-            "breakdown": storage_mod.storage_breakdown(status_obj),
-        })
+                "fetched_at": snap["last_success"],
+                "breakdown": storage_mod.storage_breakdown(status_obj),
+            }
+        )
 
     @app.route("/api/history/capacity")
     def api_history_capacity():
         hours = _req_hours(24.0)
         days = _req_int("days", 14, lo=1, hi=180)
         since = time.time() - hours * 3600
-        return jsonify({
-            "since": since,
-            "hours": hours,
-            "series": history.capacity_series(since),
-            "daily_written": history.daily_written(days=days),
-        })
+        return jsonify(
+            {
+                "since": since,
+                "hours": hours,
+                "series": history.capacity_series(since),
+                "daily_written": history.daily_written(days=days),
+            }
+        )
 
     @app.route("/api/history/errors")
     def api_history_errors():
@@ -338,21 +352,25 @@ def create_app() -> Flask:
             for s in status_obj.slots:
                 if not s.present:
                     continue
-                current.append({
-                    "slot": s.slot,
-                    "serial": s.serial,
-                    "make": " ".join(x for x in (s.vendor, s.model) if x).strip(),
-                    "error_count": s.error_count,
-                    "status_label": s.status_label,
-                    "status_severity": s.status_severity,
-                    "is_accelerator": s.is_accelerator,
-                    "rotational_label": s.rotational_label,
-                })
-        return jsonify({
-            "current": current,
-            "events": history.error_log(limit=_req_int("limit", 200, lo=1, hi=1000)),
-            "totals": history.error_totals(),
-        })
+                current.append(
+                    {
+                        "slot": s.slot,
+                        "serial": s.serial,
+                        "make": " ".join(x for x in (s.vendor, s.model) if x).strip(),
+                        "error_count": s.error_count,
+                        "status_label": s.status_label,
+                        "status_severity": s.status_severity,
+                        "is_accelerator": s.is_accelerator,
+                        "rotational_label": s.rotational_label,
+                    }
+                )
+        return jsonify(
+            {
+                "current": current,
+                "events": history.error_log(limit=_req_int("limit", 200, lo=1, hi=1000)),
+                "totals": history.error_totals(),
+            }
+        )
 
     @app.route("/api/reference")
     def api_reference():
@@ -366,12 +384,14 @@ def create_app() -> Flask:
     def api_history_throughput():
         hours = _req_hours(1.0)
         since = time.time() - hours * 3600
-        return jsonify({
-            "since": since,
-            "hours": hours,
-            "series": history.throughput_series(since),
-            "status": throughput.snapshot(include_samples=False),
-        })
+        return jsonify(
+            {
+                "since": since,
+                "hours": hours,
+                "series": history.throughput_series(since),
+                "status": throughput.snapshot(include_samples=False),
+            }
+        )
 
     @app.route("/hardware")
     def hardware_page():
@@ -389,12 +409,14 @@ def create_app() -> Flask:
     def api_history_hardware():
         hours = _req_hours(1.0)
         since = time.time() - hours * 3600
-        return jsonify({
-            "since": since,
-            "hours": hours,
-            "series": history.hardware_series(since),
-            "status": hardware.snapshot(include_samples=False),
-        })
+        return jsonify(
+            {
+                "since": since,
+                "hours": hours,
+                "series": history.hardware_series(since),
+                "status": hardware.snapshot(include_samples=False),
+            }
+        )
 
     @app.route("/settings")
     def settings():
@@ -455,7 +477,9 @@ def create_app() -> Flask:
         # Pre-flight: never reboot mid-relayout (drives must not drop out then).
         st = poller.snapshot().get("status")
         if st and st.get("data_protection_in_progress"):
-            return jsonify({"error": "data protection/relayout in progress — refusing to restart"}), 409
+            return jsonify(
+                {"error": "data protection/relayout in progress — refusing to restart"}
+            ), 409
         try:
             control.restart(DROBO_HOST, serial=_current_serial())
         except control.DroboControlError as exc:
@@ -480,9 +504,11 @@ def main() -> None:
     hardware.start()
     tp = throughput.snapshot(include_samples=False)
     hw = hardware.snapshot(include_samples=False)
+    tp_err = f" ({tp['last_error']})" if tp.get("last_error") else ""
+    hw_err = f" ({hw['last_error']})" if hw.get("last_error") else ""
     print(f"Drobo dashboard: http://{WEB_HOST}:{WEB_PORT}  (polling {DROBO_HOST}:{DROBO_PORT})")
-    print(f"  throughput: {tp['state']}" + (f" ({tp['last_error']})" if tp.get('last_error') else ""))
-    print(f"  hardware:   {hw['state']}" + (f" ({hw['last_error']})" if hw.get('last_error') else ""))
+    print(f"  throughput: {tp['state']}{tp_err}")
+    print(f"  hardware:   {hw['state']}{hw_err}")
     app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
 
 

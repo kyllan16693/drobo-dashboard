@@ -155,8 +155,7 @@ drobo-dashboard/
 │  └─ rawdump.py        full field dump for /stats & /api/raw
 ├─ templates/*.html     one per page
 ├─ static/*.{js,css}    per-page assets + shared base.css / charts.js
-├─ docs/DROBO-5N.md     device knowledge base
-├─ RESEARCH-*.md        extraction & control-protocol research
+├─ docs/                knowledge base, research notes, screenshots
 └─ tests/sample_5n.xml  captured live document for offline testing
 ```
 
@@ -188,7 +187,9 @@ print(status.status_label, status.used_human, "/", status.total_human)
 ## Testing / development
 
 - Offline parsing test data: `tests/sample_5n.xml`.
-- Lint before shipping; the project targets clean Python + JS.
+- Lint/format: `uv sync --extra dev && uv run ruff check . && uv run ruff format --check .`
+- Typecheck: `uv run mypy`
+- Research notes live in `docs/RESEARCH-*.md` (extraction + control protocol).
 - The dashboard has been hardened via adversarial review: XML-bomb (DTD)
   rejection, HTML-escaping/XSS safety on all device-derived strings, CSRF on
   control actions, and query-param sanitization (finite/bounded `hours`).

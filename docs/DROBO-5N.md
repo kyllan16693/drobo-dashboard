@@ -5,8 +5,8 @@ dashboard: hardware, protocols, the data it exposes (and hides), the BeyondRAID
 capacity math, and how it behaves on drive failure. This is the single source of
 truth — read it before touching the device or the parsing/capacity code.
 
-> Companion deep-dives: [`../RESEARCH-extraction.md`](../RESEARCH-extraction.md)
-> (can we get more data / SMART?) and [`../RESEARCH-settings.md`](../RESEARCH-settings.md)
+> Companion deep-dives: [`RESEARCH-extraction.md`](RESEARCH-extraction.md)
+> (can we get more data / SMART?) and [`RESEARCH-settings.md`](RESEARCH-settings.md)
 > (the port-5001 control protocol). This file is the consolidated summary.
 
 ---
@@ -147,7 +147,7 @@ We reverse-engineered only the **safe, reversible** subset:
 
 Implemented in `drobo/control.py`; exposed on `/settings` but **OFF by default**
 (needs `DROBO_ENABLE_CONTROL=1` and a per-process CSRF token). Full protocol
-notes: [`../RESEARCH-settings.md`](../RESEARCH-settings.md). Anything
+notes: [`RESEARCH-settings.md`](RESEARCH-settings.md). Anything
 destructive (reformat, redundancy change) is intentionally **not** implemented.
 
 ---
@@ -192,7 +192,7 @@ Confirmed three independent ways over SSH:
 sectors, power-on hours, true SSD wear) and temperatures are **architecturally
 unavailable** — not a limitation of this app. The best health proxy we have is
 **`mErrorCount` trending over time** (the `/errors` page logs each increase).
-Full evidence + the (rejected) install proposals: [`../RESEARCH-extraction.md`](../RESEARCH-extraction.md).
+Full evidence + the (rejected) install proposals: [`RESEARCH-extraction.md`](RESEARCH-extraction.md).
 
 ---
 

@@ -115,18 +115,20 @@ def _parse_top(lines: list[str], limit: int = 6) -> list[dict]:
             break
     if header_idx is None:
         return procs
-    for line in lines[header_idx + 1:]:
+    for line in lines[header_idx + 1 :]:
         f = line.split()
         if len(f) < 9:
             continue
         try:
-            procs.append({
-                "pid": int(f[0]),
-                "user": f[2],
-                "mem_pct": float(f[5]),
-                "cpu_pct": float(f[7]),
-                "cmd": " ".join(f[8:])[:60],
-            })
+            procs.append(
+                {
+                    "pid": int(f[0]),
+                    "user": f[2],
+                    "mem_pct": float(f[5]),
+                    "cpu_pct": float(f[7]),
+                    "cmd": " ".join(f[8:])[:60],
+                }
+            )
         except (ValueError, IndexError):
             continue
         if len(procs) >= limit:
@@ -177,7 +179,8 @@ class HardwareMonitor:
                 self._state = "disabled"
                 self._last_error = (
                     "no SSH credentials (DROBO_USERNAME/DROBO_PASSWORD)"
-                    if self._want_enabled else "hardware monitor disabled"
+                    if self._want_enabled
+                    else "hardware monitor disabled"
                 )
             return
         if self._thread and self._thread.is_alive():
@@ -223,9 +226,14 @@ class HardwareMonitor:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(
-            self.host, username=self.username, password=self.password,
-            timeout=self.connect_timeout, banner_timeout=self.connect_timeout,
-            auth_timeout=self.connect_timeout, look_for_keys=False, allow_agent=False,
+            self.host,
+            username=self.username,
+            password=self.password,
+            timeout=self.connect_timeout,
+            banner_timeout=self.connect_timeout,
+            auth_timeout=self.connect_timeout,
+            look_for_keys=False,
+            allow_agent=False,
         )
         self._client = client
         self._load_info()
@@ -336,13 +344,20 @@ class HardwareMonitor:
             "cpu_pct": round(cpu_pct, 1) if cpu_pct is not None else None,
             "iowait_pct": round(iowait_pct, 1) if iowait_pct is not None else None,
             "per_core": per_core,
-            "mem_used": mem_used, "mem_total": mem_total,
-            "mem_cache": mem_cache, "mem_free": mem_free,
+            "mem_used": mem_used,
+            "mem_total": mem_total,
+            "mem_cache": mem_cache,
+            "mem_free": mem_free,
             "mem_used_pct": round(100 * mem_used / mem_total, 1) if mem_total else None,
-            "swap_used": swap_used, "swap_total": swap_total,
-            "load1": load1, "load5": load5, "load15": load15,
-            "procs_running": procs_running, "procs_total": procs_total,
-            "disk_r_bps": disk_r_bps, "disk_w_bps": disk_w_bps,
+            "swap_used": swap_used,
+            "swap_total": swap_total,
+            "load1": load1,
+            "load5": load5,
+            "load15": load15,
+            "procs_running": procs_running,
+            "procs_total": procs_total,
+            "disk_r_bps": disk_r_bps,
+            "disk_w_bps": disk_w_bps,
             "uptime_sec": uptime_sec,
         }
         with self._lock:

@@ -39,7 +39,7 @@ import socket
 import struct
 
 _HANDSHAKE_PREAMBLE = b"\x44\x52\x49\x4e\x45\x54\x54\x4d\x07\x01\x00\x00"  # DIRNETTM + 07 01 00 00
-_CMD_PREAMBLE = b"\x44\x52\x49\x4e\x45\x54\x54\x4d\x0a\x01\x00\x00"        # DIRNETTM + 0a 01 00 00
+_CMD_PREAMBLE = b"\x44\x52\x49\x4e\x45\x54\x54\x4d\x0a\x01\x00\x00"  # DIRNETTM + 0a 01 00 00
 _PREAMBLE_LEN = 16  # 12 static bytes + 4-byte big-endian size
 
 DEFAULT_STAT_PORT = 5000
@@ -154,6 +154,7 @@ def _exchange(
 
 
 # --- curated safe commands --------------------------------------------------
+
 
 def get_sysinfo(host: str, serial: str | None = None, **kw) -> str:
     """Opcode 61 — read-only device system info (temperature + uptime)."""

@@ -13,27 +13,27 @@ from __future__ import annotations
 # Overall device status (``mStatus``). Keyed by the decimal value the device
 # reports; hex shown for reference.
 OVERALL_STATUS: dict[int, tuple[str, str]] = {
-    0x8000: ("Healthy", "ok"),                       # 32768
-    0x18000: ("Healthy", "ok"),                      # 98304  (dashboard: OK)
-    0x8004: ("Low on space (yellow)", "warning"),    # 32772
-    0x8046: ("A drive was removed", "warning"),      # 32838
+    0x8000: ("Healthy", "ok"),  # 32768
+    0x18000: ("Healthy", "ok"),  # 98304  (dashboard: OK)
+    0x8004: ("Low on space (yellow)", "warning"),  # 32772
+    0x8046: ("A drive was removed", "warning"),  # 32838
     0x18240: ("Data protection in progress - do not remove drives", "warning"),  # 98880
     0x8240: ("Data protection in progress", "info"),  # 33344
-    0x8006: ("Out of space (red)", "critical"),      # 32774
-    0x18006: ("Out of space (red)", "critical"),     # 98310
-    0x8010: ("Bad drive", "critical"),               # 32784
-    0x18010: ("Bad drive", "critical"),              # 98320
+    0x8006: ("Out of space (red)", "critical"),  # 32774
+    0x18006: ("Out of space (red)", "critical"),  # 98310
+    0x8010: ("Bad drive", "critical"),  # 32784
+    0x18010: ("Bad drive", "critical"),  # 98320
 }
 
 # Per-slot status (``mSlotsExp/nX/mStatus``).
 SLOT_STATUS: dict[int, tuple[str, str]] = {
-    0x01: ("Full - replace/add a drive", "critical"),   # 1
+    0x01: ("Full - replace/add a drive", "critical"),  # 1
     0x02: ("Filling up - add a drive soon", "warning"),  # 2
-    0x03: ("Healthy", "ok"),                             # 3
-    0x04: ("Data relayout in progress", "info"),         # 4
-    0x80: ("Empty", "empty"),                            # 128
-    0x81: ("Drive removed", "warning"),                  # 129
-    0x86: ("Drive failure", "critical"),                 # 134
+    0x03: ("Healthy", "ok"),  # 3
+    0x04: ("Data relayout in progress", "info"),  # 4
+    0x80: ("Empty", "empty"),  # 128
+    0x81: ("Drive removed", "warning"),  # 129
+    0x86: ("Drive failure", "critical"),  # 134
 }
 
 # Redundancy mode (``mFirmwareFeatureStates``).

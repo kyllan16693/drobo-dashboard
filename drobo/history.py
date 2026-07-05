@@ -101,23 +101,33 @@ class History:
     # ------------------------------------------------------------------ #
     # Writes
     # ------------------------------------------------------------------ #
-    def record_capacity(self, used: int, free: int, total: int, unallocated: int = 0,
-                        ts: float | None = None) -> None:
+    def record_capacity(
+        self, used: int, free: int, total: int, unallocated: int = 0, ts: float | None = None
+    ) -> None:
         ts = time.time() if ts is None else ts
         with self._lock:
             self._conn.execute(
-                "INSERT INTO capacity_samples (ts, used, free, total, unallocated) VALUES (?,?,?,?,?)",
+                "INSERT INTO capacity_samples (ts, used, free, total, unallocated) "
+                "VALUES (?,?,?,?,?)",
                 (ts, int(used), int(free), int(total), int(unallocated)),
             )
             self._conn.commit()
             self._maybe_prune(ts)
 
-    def record_throughput(self, iface: str, rx_bytes: int, tx_bytes: int,
-                         rx_bps: float, tx_bps: float, ts: float | None = None) -> None:
+    def record_throughput(
+        self,
+        iface: str,
+        rx_bytes: int,
+        tx_bytes: int,
+        rx_bps: float,
+        tx_bps: float,
+        ts: float | None = None,
+    ) -> None:
         ts = time.time() if ts is None else ts
         with self._lock:
             self._conn.execute(
-                "INSERT INTO throughput_samples (ts, iface, rx_bytes, tx_bytes, rx_bps, tx_bps) VALUES (?,?,?,?,?,?)",
+                "INSERT INTO throughput_samples "
+                "(ts, iface, rx_bytes, tx_bytes, rx_bps, tx_bps) VALUES (?,?,?,?,?,?)",
                 (ts, iface, int(rx_bytes), int(tx_bytes), float(rx_bps), float(tx_bps)),
             )
             self._conn.commit()
@@ -129,9 +139,14 @@ class History:
                 "INSERT INTO hardware_samples (ts, cpu_pct, iowait_pct, mem_used, mem_total,"
                 " load1, disk_r_bps, disk_w_bps) VALUES (?,?,?,?,?,?,?,?)",
                 (
-                    float(ts), sample.get("cpu_pct"), sample.get("iowait_pct"),
-                    sample.get("mem_used"), sample.get("mem_total"),
-                    sample.get("load1"), sample.get("disk_r_bps"), sample.get("disk_w_bps"),
+                    float(ts),
+                    sample.get("cpu_pct"),
+                    sample.get("iowait_pct"),
+                    sample.get("mem_used"),
+                    sample.get("mem_total"),
+                    sample.get("load1"),
+                    sample.get("disk_r_bps"),
+                    sample.get("disk_w_bps"),
                 ),
             )
             self._conn.commit()
@@ -161,29 +176,59 @@ class History:
                     # if it already carries errors so the existing count has a
                     # visible starting point in the log.
                     if count > 0:
-                        new_events.append(self._insert_event(
-                            ts, slot, serial, make, 0, count, count, "baseline",
-                            f"{count} error(s) already present when tracking began",
-                        ))
+                        new_events.append(
+                            self._insert_event(
+                                ts,
+                                slot,
+                                serial,
+                                make,
+                                0,
+                                count,
+                                count,
+                                "baseline",
+                                f"{count} error(s) already present when tracking began",
+                            )
+                        )
                     self._conn.execute(
-                        "INSERT INTO slot_error_state (serial, slot, last_count, updated) VALUES (?,?,?,?)",
+                        "INSERT INTO slot_error_state (serial, slot, last_count, updated) "
+                        "VALUES (?,?,?,?)",
                         (serial, slot, count, ts),
                     )
                 else:
                     last = int(row["last_count"])
                     if count > last:
-                        new_events.append(self._insert_event(
-                            ts, slot, serial, make, last, count, count - last, "increase", None,
-                        ))
+                        new_events.append(
+                            self._insert_event(
+                                ts,
+                                slot,
+                                serial,
+                                make,
+                                last,
+                                count,
+                                count - last,
+                                "increase",
+                                None,
+                            )
+                        )
                     elif count < last:
                         # Counter dropped — usually a drive swap or firmware reset.
-                        new_events.append(self._insert_event(
-                            ts, slot, serial, make, last, count, count - last, "reset",
-                            "error count decreased (drive replaced or counter reset)",
-                        ))
+                        new_events.append(
+                            self._insert_event(
+                                ts,
+                                slot,
+                                serial,
+                                make,
+                                last,
+                                count,
+                                count - last,
+                                "reset",
+                                "error count decreased (drive replaced or counter reset)",
+                            )
+                        )
                     if count != last or slot != -1:
                         self._conn.execute(
-                            "UPDATE slot_error_state SET slot=?, last_count=?, updated=? WHERE serial=?",
+                            "UPDATE slot_error_state SET slot=?, last_count=?, updated=? "
+                            "WHERE serial=?",
                             (slot, count, ts, serial),
                         )
             self._conn.commit()
@@ -191,22 +236,37 @@ class History:
 
     def _insert_event(self, ts, slot, serial, make, prev, new, delta, kind, note) -> dict:
         cur = self._conn.execute(
-            "INSERT INTO error_events (ts, slot, serial, make, prev_count, new_count, delta, kind, note)"
+            "INSERT INTO error_events "
+            "(ts, slot, serial, make, prev_count, new_count, delta, kind, note)"
             " VALUES (?,?,?,?,?,?,?,?,?)",
             (ts, slot, serial, make, prev, new, delta, kind, note),
         )
         return {
-            "id": cur.lastrowid, "ts": ts, "slot": slot, "serial": serial, "make": make,
-            "prev_count": prev, "new_count": new, "delta": delta, "kind": kind, "note": note,
+            "id": cur.lastrowid,
+            "ts": ts,
+            "slot": slot,
+            "serial": serial,
+            "make": make,
+            "prev_count": prev,
+            "new_count": new,
+            "delta": delta,
+            "kind": kind,
+            "note": note,
         }
 
     def _maybe_prune(self, now: float) -> None:
         if now - self._last_prune < _PRUNE_EVERY:
             return
         self._last_prune = now
-        self._conn.execute("DELETE FROM capacity_samples WHERE ts < ?", (now - _CAPACITY_RETENTION,))
-        self._conn.execute("DELETE FROM throughput_samples WHERE ts < ?", (now - _THROUGHPUT_RETENTION,))
-        self._conn.execute("DELETE FROM hardware_samples WHERE ts < ?", (now - _HARDWARE_RETENTION,))
+        self._conn.execute(
+            "DELETE FROM capacity_samples WHERE ts < ?", (now - _CAPACITY_RETENTION,)
+        )
+        self._conn.execute(
+            "DELETE FROM throughput_samples WHERE ts < ?", (now - _THROUGHPUT_RETENTION,)
+        )
+        self._conn.execute(
+            "DELETE FROM hardware_samples WHERE ts < ?", (now - _HARDWARE_RETENTION,)
+        )
         self._conn.commit()
 
     # ------------------------------------------------------------------ #
@@ -216,15 +276,16 @@ class History:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT ts, used, free, total, unallocated FROM capacity_samples"
-                " WHERE ts >= ? ORDER BY ts", (since_ts,),
+                " WHERE ts >= ? ORDER BY ts",
+                (since_ts,),
             ).fetchall()
         return _downsample([dict(r) for r in rows], max_points)
 
     def throughput_series(self, since_ts: float, max_points: int = 600) -> list[dict]:
         with self._lock:
             rows = self._conn.execute(
-                "SELECT ts, rx_bps, tx_bps FROM throughput_samples"
-                " WHERE ts >= ? ORDER BY ts", (since_ts,),
+                "SELECT ts, rx_bps, tx_bps FROM throughput_samples WHERE ts >= ? ORDER BY ts",
+                (since_ts,),
             ).fetchall()
         return _downsample([dict(r) for r in rows], max_points)
 
@@ -232,7 +293,8 @@ class History:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT ts, cpu_pct, iowait_pct, mem_used, mem_total, load1, disk_r_bps, disk_w_bps"
-                " FROM hardware_samples WHERE ts >= ? ORDER BY ts", (since_ts,),
+                " FROM hardware_samples WHERE ts >= ? ORDER BY ts",
+                (since_ts,),
             ).fetchall()
         return _downsample([dict(r) for r in rows], max_points)
 
@@ -248,7 +310,8 @@ class History:
                 "SELECT strftime('%Y-%m-%d', ts, 'unixepoch', 'localtime') AS day,"
                 "       used, MAX(ts) AS mts"
                 " FROM capacity_samples WHERE ts >= ?"
-                " GROUP BY day ORDER BY day", (since,),
+                " GROUP BY day ORDER BY day",
+                (since,),
             ).fetchall()
         out: list[dict] = []
         prev_used: int | None = None
@@ -263,7 +326,8 @@ class History:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT id, ts, slot, serial, make, prev_count, new_count, delta, kind, note"
-                " FROM error_events ORDER BY ts DESC, id DESC LIMIT ?", (limit,),
+                " FROM error_events ORDER BY ts DESC, id DESC LIMIT ?",
+                (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
 

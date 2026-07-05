@@ -26,11 +26,11 @@ ERROR_COUNT_EXPLAINER = {
     "summary": (
         "A running tally of I/O errors the Drobo firmware has logged against a "
         "bay — not an error code. A value of 7 means seven events were recorded "
-        "over the drive's life, not \"error #7\"."
+        'over the drive\'s life, not "error #7".'
     ),
     "detail": (
         "The Drobo community reverse-engineering wiki documents this field only "
-        "as \"Unknown. Only available on Drobo 5N.\" There is no public code "
+        'as "Unknown. Only available on Drobo 5N." There is no public code '
         "table because the value is a counter. A small, static count while the "
         "bay still reports Healthy (slot status 3) is usually benign — a "
         "transient read retry, a bus reset, or a hiccup during a power event. "
@@ -51,45 +51,84 @@ ERROR_COUNT_EXPLAINER = {
 # id -> (name, meaning, "higher raw is worse" flag)
 # --------------------------------------------------------------------------- #
 SMART_ATTRIBUTES: list[dict] = [
-    {"id": 5, "name": "Reallocated Sectors Count",
-     "meaning": "Sectors remapped after read/write failures. Any non-zero value means the drive has found bad sectors; a rising count is a strong failure signal.",
-     "rising_is_bad": True},
-    {"id": 187, "name": "Reported Uncorrectable Errors",
-     "meaning": "Errors that could not be recovered by ECC. Google's disk study flagged this as one of the best failure predictors.",
-     "rising_is_bad": True},
-    {"id": 188, "name": "Command Timeout",
-     "meaning": "Operations aborted due to timeout — often cabling/power, sometimes a dying drive.",
-     "rising_is_bad": True},
-    {"id": 197, "name": "Current Pending Sector Count",
-     "meaning": "Unstable sectors waiting to be remapped. Non-zero means data at risk; often clears or converts to Reallocated (5).",
-     "rising_is_bad": True},
-    {"id": 198, "name": "Offline Uncorrectable",
-     "meaning": "Sectors that failed offline read tests and can't be corrected. Non-zero is serious.",
-     "rising_is_bad": True},
-    {"id": 199, "name": "UDMA CRC Error Count",
-     "meaning": "Errors on the SATA link. Usually a bad cable or connector rather than the drive itself.",
-     "rising_is_bad": True},
-    {"id": 1, "name": "Raw Read Error Rate",
-     "meaning": "Rate of hardware read errors. Interpretation is vendor-specific (Seagate encodes it oddly); watch for change, not absolute value.",
-     "rising_is_bad": True},
-    {"id": 10, "name": "Spin Retry Count",
-     "meaning": "Retries needed to spin the platters up to speed. Non-zero suggests a tired motor/bearing.",
-     "rising_is_bad": True},
-    {"id": 196, "name": "Reallocation Event Count",
-     "meaning": "How many times sectors were remapped. Pairs with attribute 5.",
-     "rising_is_bad": True},
-    {"id": 9, "name": "Power-On Hours",
-     "meaning": "Total time powered on. Not a fault — context for the drive's age.",
-     "rising_is_bad": False},
-    {"id": 12, "name": "Power Cycle Count",
-     "meaning": "Number of power-on/off cycles. Context, not a fault.",
-     "rising_is_bad": False},
-    {"id": 194, "name": "Temperature",
-     "meaning": "Drive temperature. Sustained high temps shorten life (this Drobo firmware always reports 0, i.e. not exposed).",
-     "rising_is_bad": True},
-    {"id": 231, "name": "SSD Life Left",
-     "meaning": "Remaining SSD endurance as a percentage (100 = new). Applies to the mSATA cache.",
-     "rising_is_bad": False},
+    {
+        "id": 5,
+        "name": "Reallocated Sectors Count",
+        "meaning": "Sectors remapped after read/write failures. Any non-zero value means the drive has found bad sectors; a rising count is a strong failure signal.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 187,
+        "name": "Reported Uncorrectable Errors",
+        "meaning": "Errors that could not be recovered by ECC. Google's disk study flagged this as one of the best failure predictors.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 188,
+        "name": "Command Timeout",
+        "meaning": "Operations aborted due to timeout — often cabling/power, sometimes a dying drive.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 197,
+        "name": "Current Pending Sector Count",
+        "meaning": "Unstable sectors waiting to be remapped. Non-zero means data at risk; often clears or converts to Reallocated (5).",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 198,
+        "name": "Offline Uncorrectable",
+        "meaning": "Sectors that failed offline read tests and can't be corrected. Non-zero is serious.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 199,
+        "name": "UDMA CRC Error Count",
+        "meaning": "Errors on the SATA link. Usually a bad cable or connector rather than the drive itself.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 1,
+        "name": "Raw Read Error Rate",
+        "meaning": "Rate of hardware read errors. Interpretation is vendor-specific (Seagate encodes it oddly); watch for change, not absolute value.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 10,
+        "name": "Spin Retry Count",
+        "meaning": "Retries needed to spin the platters up to speed. Non-zero suggests a tired motor/bearing.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 196,
+        "name": "Reallocation Event Count",
+        "meaning": "How many times sectors were remapped. Pairs with attribute 5.",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 9,
+        "name": "Power-On Hours",
+        "meaning": "Total time powered on. Not a fault — context for the drive's age.",
+        "rising_is_bad": False,
+    },
+    {
+        "id": 12,
+        "name": "Power Cycle Count",
+        "meaning": "Number of power-on/off cycles. Context, not a fault.",
+        "rising_is_bad": False,
+    },
+    {
+        "id": 194,
+        "name": "Temperature",
+        "meaning": "Drive temperature. Sustained high temps shorten life (this Drobo firmware always reports 0, i.e. not exposed).",
+        "rising_is_bad": True,
+    },
+    {
+        "id": 231,
+        "name": "SSD Life Left",
+        "meaning": "Remaining SSD endurance as a percentage (100 = new). Applies to the mSATA cache.",
+        "rising_is_bad": False,
+    },
 ]
 
 
@@ -109,12 +148,8 @@ def reference_tables() -> dict:
             {"code": k, "hex": hex(k), "label": v[0], "severity": v[1]}
             for k, v in sorted(codes.SLOT_STATUS.items())
         ],
-        "disk_state": [
-            {"code": k, "label": v} for k, v in sorted(codes.DISK_STATE.items())
-        ],
-        "disk_type": [
-            {"code": k, "label": v} for k, v in sorted(codes.DISK_TYPE.items())
-        ],
+        "disk_state": [{"code": k, "label": v} for k, v in sorted(codes.DISK_STATE.items())],
+        "disk_type": [{"code": k, "label": v} for k, v in sorted(codes.DISK_TYPE.items())],
         "rotational_speed": {
             "rule": "RPM = code × 200 (code 1 = SSD). Undocumented field; derived and cross-checked against the installed drives.",
             "codes": _rpm_table(),

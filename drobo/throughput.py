@@ -125,7 +125,7 @@ class ThroughputMonitor:
                 with self._lock:
                     self._state = "ok"
                     self._last_error = None
-            except AuthenticationException as exc:
+            except AuthenticationException:
                 self._disconnect()
                 with self._lock:
                     self._state = "auth_failed"
