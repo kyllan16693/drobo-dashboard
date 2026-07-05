@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drobo 5N — Settings</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='settings.css') }}" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>💽</text></svg>" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="topbar">
+      <div class="title">
+        <h1>Drobo — Settings</h1>
+        <span class="subtitle">Control &amp; configuration</span>
+      </div>
+    </header>
+
+    <nav class="nav">
+      <a href="/">Overview</a>
+      <a href="/storage">Storage</a>
+      <a href="/errors">Errors</a>
+      <a href="/hardware">Hardware</a>
+      <a href="/stats">Details</a>
+      <a href="/settings" class="active" aria-current="page">Settings</a>
+    </nav>
+
+    <div id="banner" class="banner hidden"></div>
+
+    <section class="panel">
+      <h2>Current settings <span class="muted small">(read-only)</span></h2>
+      <div class="kv-grid" id="current-settings">
+        <div class="muted">Loading…</div>
+      </div>
+    </section>
+
+    {% if control_enabled %}
+    <section class="panel">
+      <h2>Identify <span class="tag safe">safe · self-reverting</span></h2>
+      <p class="muted">Blink all of the Drobo's LEDs so you can pick it out on a shelf. It stops on its own after the chosen time.</p>
+      <div class="actions">
+        <label class="field">Duration
+          <select id="identify-seconds">
+            <option value="30">30 seconds</option>
+            <option value="300">5 minutes</option>
+            <option value="900" selected>15 minutes</option>
+          </select>
+        </label>
+        <button id="btn-identify" class="btn">Blink lights</button>
+        <button id="btn-stop-identify" class="btn ghost">Stop</button>
+      </div>
+      <div id="identify-result" class="result" role="status"></div>
+    </section>
+
+    <section class="panel danger">
+      <h2>Danger zone</h2>
+      <details>
+        <summary>Restart the Drobo</summary>
+        <p class="warn">This reboots the device. Everything that uses it — Plex, the *arr apps, qBittorrent, and SMB shares — will drop until it comes back (typically a few minutes). It is automatically refused while data protection / relayout is in progress.</p>
+        <label class="field">Type <code>RESTART</code> to confirm
+          <input type="text" id="restart-confirm" autocomplete="off" spellcheck="false" placeholder="RESTART" />
+        </label>
+        <button id="btn-restart" class="btn danger-btn" disabled>Restart device</button>
+        <div id="restart-result" class="result" role="status"></div>
+      </details>
+    </section>
+    {% else %}
+    <section class="panel">
+      <h2>Controls are disabled</h2>
+      <p class="muted">This page is read-only. To enable the <strong>Identify</strong> and <strong>Restart</strong> actions, start the dashboard with <code>DROBO_ENABLE_CONTROL=1</code>. Commands are sent over the Drobo's <em>unauthenticated</em> control port (5001), so only turn this on for a dashboard that is itself on a trusted LAN.</p>
+      <p class="muted small">Deliberately excluded for safety: admin password, network/IP config, redundancy toggle, factory reset, firmware, and app install — see <code>RESEARCH-settings.md</code>.</p>
+    </section>
+    {% endif %}
+
+    <footer class="statusbar">
+      <span id="freshness" class="muted">–</span>
+      <span class="sep">·</span>
+      <span class="muted">control port <code>{{ drobo_host }}</code>:5001</span>
+    </footer>
+  </main>
+
+  <script>
+    window.DROBO_CONFIG = {
+      host: {{ drobo_host | tojson }},
+      pollInterval: {{ poll_interval | tojson }},
+      controlEnabled: {{ control_enabled | tojson }},
+      csrfToken: {{ csrf_token | tojson }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='settings.js') }}"></script>
+</body>
+</html>

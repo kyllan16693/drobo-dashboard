@@ -1,0 +1,54 @@
+/* /hardware page — builds on base.css */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.stat-card { margin-bottom: 0; padding: 14px 16px 16px; }
+.stat-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); font-weight: 600; }
+.stat-big { font-size: 34px; font-weight: 700; line-height: 1.1; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+.stat-big.small-big { font-size: 22px; }
+.stat-unit { font-size: 18px; color: var(--muted); font-weight: 600; margin-left: 3px; }
+.stat-sub { font-size: 12px; margin-top: 3px; }
+.load-note { font-weight: 600; }
+.load-note.ok { color: var(--ok); }
+.load-note.warning { color: var(--warning); }
+.load-note.critical { color: var(--critical); }
+
+.meter { height: 8px; border-radius: 5px; background: var(--panel-3); overflow: hidden; margin: 8px 0 2px; }
+.meter-fill { height: 100%; width: 0; border-radius: 5px; background: var(--ok); transition: width 0.4s ease, background 0.4s ease; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.two-col .panel { margin-bottom: 18px; }
+
+/* Per-core bars */
+.cores { display: flex; flex-direction: column; gap: 11px; }
+.core-row { display: flex; align-items: center; gap: 10px; }
+.core-label { width: 52px; font-size: 12px; color: var(--muted); flex: none; }
+.core-track { flex: 1; height: 12px; border-radius: 6px; background: var(--panel-3); overflow: hidden; }
+.core-fill { height: 100%; border-radius: 6px; background: var(--ok); transition: width 0.4s ease, background 0.4s ease; }
+.core-val { width: 46px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; flex: none; }
+
+/* key/value list */
+dl.kv { margin: 0; display: flex; flex-direction: column; gap: 0; }
+dl.kv > div { display: flex; justify-content: space-between; gap: 14px; padding: 8px 0; border-bottom: 1px solid var(--border-soft); }
+dl.kv > div:last-child { border-bottom: none; }
+dl.kv dt { color: var(--muted); font-size: 13px; }
+dl.kv dd { margin: 0; text-align: right; font-size: 13px; }
+
+.chart-box { min-height: 90px; }
+.legend-inline { display: flex; gap: 18px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.legend-inline .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+.table-scroll { overflow-x: auto; }
+.dtable td .cmd { font-family: var(--mono); font-size: 12px; }
+
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+}
+@media (max-width: 460px) {
+  .stat-grid { grid-template-columns: 1fr; }
+}

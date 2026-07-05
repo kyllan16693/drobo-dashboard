@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drobo 5N — Errors</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='errors.css') }}" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>💽</text></svg>" />
+</head>
+<body>
+  <nav class="topnav">
+    <div class="brand">
+      <span class="logo">drobo</span>
+      <div class="brand-meta">
+        <span class="brand-name">Drobo 5N</span>
+        <span class="brand-model">Drive errors</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Overview</a>
+      <a href="/storage" class="nav-link">Storage</a>
+      <a href="/errors" class="nav-link active" aria-current="page">Errors</a>
+      <a href="/hardware" class="nav-link">Hardware</a>
+      <a href="/stats" class="nav-link">Details</a>
+      <a href="/settings" class="nav-link">Settings</a>
+    </div>
+    <div id="track-pill" class="pill sev-ok" title="Error tracking"><span class="dot"></span><span class="pill-label">Tracking</span></div>
+  </nav>
+
+  <main class="wrap">
+    <h1 class="page-title">Drive errors</h1>
+    <p class="page-sub">Per-drive error counts, plus a live timeline of when new errors appear.</p>
+
+    <div id="banner" class="banner hidden" role="status"></div>
+
+    <section class="panel">
+      <div class="panel-head">Per-drive error counts
+        <span id="cur-summary" class="head-note"></span>
+      </div>
+      <div class="panel-body no-pad">
+        <table class="dtable" id="current-table">
+          <thead><tr>
+            <th>Slot</th><th>Drive</th><th>Serial</th><th>Speed</th>
+            <th>Status</th><th class="num">Errors</th>
+          </tr></thead>
+          <tbody><tr><td colspan="6" class="muted" style="padding:16px">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">Error timeline
+        <span class="head-note">recorded by this dashboard — the Drobo doesn't timestamp errors</span>
+      </div>
+      <div class="panel-body no-pad">
+        <table class="dtable" id="events-table">
+          <thead><tr>
+            <th>When</th><th>Slot</th><th>Drive</th><th>Change</th><th class="num">Total</th><th>Note</th>
+          </tr></thead>
+          <tbody><tr><td colspan="6" class="muted" style="padding:16px">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">What does the error count mean?</div>
+      <div class="panel-body">
+        <p id="explainer-summary" class="explainer-summary"></p>
+        <p id="explainer-detail" class="muted"></p>
+        <ul id="explainer-guidance" class="guidance"></ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">Code &amp; S.M.A.R.T. lookup
+        <span class="head-note">reference tables — decode any number the device reports</span>
+      </div>
+      <div class="panel-body" id="reference-body">
+        <p class="muted">Loading reference tables…</p>
+      </div>
+    </section>
+
+    <footer class="statusbar">
+      <span id="freshness" class="muted">–</span>
+      <span class="sep">·</span>
+      <a href="/api/history/errors" target="_blank" rel="noopener">errors JSON</a>
+      <span class="sep">·</span>
+      <a href="/api/reference" target="_blank" rel="noopener">reference JSON</a>
+    </footer>
+  </main>
+
+  <script>
+    window.DROBO_CONFIG = { pollInterval: {{ poll_interval | tojson }} };
+  </script>
+  <script src="{{ url_for('static', filename='errors.js') }}"></script>
+</body>
+</html>

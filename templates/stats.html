@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drobo 5N — Details</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='stats.css') }}" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>💽</text></svg>" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="topbar">
+      <div class="title">
+        <h1 id="device-name">Drobo — Details</h1>
+        <span id="device-model" class="subtitle">Everything the device reports</span>
+      </div>
+      <div class="actions">
+        <button id="refresh" type="button">Refresh</button>
+        <span id="fetched" class="muted"></span>
+      </div>
+    </header>
+
+    <nav class="nav">
+      <a href="/">Overview</a>
+      <a href="/storage">Storage</a>
+      <a href="/errors">Errors</a>
+      <a href="/hardware">Hardware</a>
+      <a href="/stats" class="active" aria-current="page">Details</a>
+      <a href="/settings">Settings</a>
+    </nav>
+
+    <div id="banner" class="banner hidden"></div>
+
+    <div id="content">
+      <p class="muted loading">Loading full device details…</p>
+    </div>
+
+    <footer class="statusbar">
+      <span class="muted">source <code id="src-host">{{ drobo_host }}</code>:5000</span>
+      <span class="sep">·</span>
+      <span class="muted">live per-request fetch</span>
+      <span class="sep">·</span>
+      <a href="/api/raw" target="_blank" rel="noopener">raw JSON</a>
+    </footer>
+  </main>
+
+  <script>
+    window.DROBO_CONFIG = {
+      host: {{ drobo_host | tojson }},
+      pollInterval: {{ poll_interval | tojson }}
+    };
+    // Numeric-code lookups from drobo.codes (single source of truth), so the
+    // page can label codes while still showing every raw value.
+    window.DROBO_CODE_MAPS = {{ code_maps | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='stats.js') }}"></script>
+</body>
+</html>

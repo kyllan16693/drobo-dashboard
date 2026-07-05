@@ -1,0 +1,23 @@
+# Paste into CT 402 /root/docker_vols/homepage/config/services.yaml
+# under the Storage group. Replace the IP with your drobo-dashboard host.
+- Drobo:
+    icon: mdi-harddisk
+    href: "http://192.168.1.72:8765"
+    description: Drobo 5N temp/seed NAS
+    widget:
+      type: customapi
+      url: "http://192.168.1.72:8765/api/widget"
+      refreshInterval: 15000
+      mappings:
+        - field: used_pct
+          label: Capacity
+          format: percent
+        - field: uptime_human
+          label: Uptime
+        - field: load1
+          label: Load
+          format: number
+        - field: rx_human
+          label: Download
+        - field: tx_human
+          label: Upload

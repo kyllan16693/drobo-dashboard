@@ -1,0 +1,33 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local secrets / config — never commit
+.env
+.env.*
+!.env.example
+!deploy/.env.example
+
+# Keys / certs
+*.pem
+*.key
+id_*
+
+# macOS
+.DS_Store
+
+# Local SQLite history (capacity/error/throughput samples) — machine-local state
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Cloned reference projects (studied, not part of this project)
+reference/

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drobo 5N — Storage</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='storage.css') }}" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>💽</text></svg>" />
+</head>
+<body>
+  <nav class="topnav">
+    <div class="brand">
+      <span class="logo">drobo</span>
+      <div class="brand-meta">
+        <span class="brand-name">Drobo 5N</span>
+        <span class="brand-model">Storage &amp; throughput</span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-link">Overview</a>
+      <a href="/storage" class="nav-link active" aria-current="page">Storage</a>
+      <a href="/errors" class="nav-link">Errors</a>
+      <a href="/hardware" class="nav-link">Hardware</a>
+      <a href="/stats" class="nav-link">Details</a>
+      <a href="/settings" class="nav-link">Settings</a>
+    </div>
+    <div id="cap-pill" class="pill sev-unknown" title="Capacity health"><span class="dot"></span><span class="pill-label">–</span></div>
+  </nav>
+
+  <main class="wrap">
+    <h1 class="page-title">Storage</h1>
+    <p class="page-sub">Capacity breakdown, live network throughput, and how much data moves over time.</p>
+
+    <div id="banner" class="banner hidden" role="status"></div>
+
+    <div class="cap-grid">
+      <section class="panel">
+        <div class="panel-head">Capacity
+          <label class="toggle"><input type="checkbox" id="toggle-unalloc" checked /> Show unallocated</label>
+        </div>
+        <div class="panel-body pie-body">
+          <div id="pie" class="pie"></div>
+          <div id="pie-legend" class="legend"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">How the disks are used
+          <span class="head-note">raw physical capacity across the data bays</span>
+        </div>
+        <div class="panel-body">
+          <div id="usage-bar"></div>
+          <div id="usage-legend" class="legend usage-legend"></div>
+          <p id="usage-note" class="muted small"></p>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">Network throughput
+        <span id="tp-state" class="head-note"></span>
+      </div>
+      <div class="panel-body">
+        <div class="tp-now">
+          <div class="tp-metric"><span class="tp-arrow rx">↓</span><span class="tp-label">Read (rx)</span><b id="tp-rx">–</b></div>
+          <div class="tp-metric"><span class="tp-arrow tx">↑</span><span class="tp-label">Write (tx)</span><b id="tp-tx">–</b></div>
+          <span id="tp-iface" class="muted small"></span>
+        </div>
+        <div id="tp-chart" class="chart-box"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">Capacity used over time
+        <span class="range-btns">
+          <button class="btn" data-hours="24">24h</button>
+          <button class="btn active" data-hours="168">7d</button>
+          <button class="btn" data-hours="720">30d</button>
+        </span>
+      </div>
+      <div class="panel-body">
+        <div id="cap-chart" class="chart-box"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">Data written per day
+        <span class="head-note">net change in used space (green = written, blue = freed)</span>
+      </div>
+      <div class="panel-body">
+        <div id="written-chart" class="chart-box"></div>
+      </div>
+    </section>
+
+    <footer class="statusbar">
+      <span id="freshness" class="muted">–</span>
+      <span class="sep">·</span>
+      <span class="muted">source <code>{{ drobo_host }}</code></span>
+      <span class="sep">·</span>
+      <a href="/api/storage" target="_blank" rel="noopener">storage JSON</a>
+    </footer>
+  </main>
+
+  <script>
+    window.DROBO_CONFIG = { pollInterval: {{ poll_interval | tojson }} };
+  </script>
+  <script src="{{ url_for('static', filename='charts.js') }}"></script>
+  <script src="{{ url_for('static', filename='storage.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  drobo-dashboard:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "${WEB_PORT:-8765}:${WEB_PORT:-8765}"
+    volumes:
+      - ../data:/app/data
+    env_file:
+      - ../.env
+    environment:
+      WEB_HOST: "0.0.0.0"
+      DROBO_DB_PATH: "data/history.db"
+    restart: unless-stopped

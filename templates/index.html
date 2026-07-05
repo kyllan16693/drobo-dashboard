@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drobo 5N Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>💽</text></svg>" />
+</head>
+<body>
+  <nav class="topnav">
+    <div class="brand">
+      <span class="logo">drobo</span>
+      <div class="brand-meta">
+        <span id="device-name" class="brand-name">Drobo</span>
+        <span id="device-model" class="brand-model"></span>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-link active" aria-current="page">Overview</a>
+      <a href="/storage" class="nav-link">Storage</a>
+      <a href="/errors" class="nav-link">Errors</a>
+      <a href="/hardware" class="nav-link">Hardware</a>
+      <a href="/stats" class="nav-link">Details</a>
+      <a href="/settings" class="nav-link">Settings</a>
+    </div>
+    <div id="overall-pill" class="pill sev-unknown" title="Overall health">
+      <span class="dot"></span><span class="pill-label">Connecting…</span>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <div id="banner" class="banner hidden" role="status"></div>
+
+    <div class="grid">
+      <!-- Device: chassis of drive bays with green LEDs, blue array dots, blue cache -->
+      <section class="device-col">
+        <div class="chassis">
+          <div class="chassis-top">
+            <span class="chassis-logo">drobo</span>
+            <span class="chassis-sub">5N</span>
+          </div>
+
+          <div id="bays" class="bays" aria-label="Drive bays">
+            <div class="bays-placeholder muted">Loading drive bays…</div>
+          </div>
+
+          <div class="chassis-foot">
+            <span class="power-led" title="Power"></span>
+            <div class="array-gauge">
+              <div id="array-dots" class="array-dots" aria-label="Array fullness"></div>
+              <div id="array-caption" class="array-caption muted">–</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="cache" class="cache hidden" aria-label="Cache accelerator"></div>
+      </section>
+
+      <!-- Info panels styled after the old dashboard's System Information -->
+      <aside class="info-col">
+        <div class="panel">
+          <div class="panel-head">System Information</div>
+          <dl class="sysrows">
+            <div class="sysrow"><dt>Name</dt><dd id="si-name">–</dd></div>
+            <div class="sysrow"><dt>Model</dt><dd id="si-model">–</dd></div>
+            <div class="sysrow"><dt>Serial #</dt><dd id="si-serial" class="mono">–</dd></div>
+            <div class="sysrow"><dt>Health</dt><dd><span id="si-health" class="pill sev-unknown"><span class="dot"></span><span class="pill-label">–</span></span></dd></div>
+            <div class="sysrow"><dt>Data protection</dt><dd id="si-redundancy">–</dd></div>
+            <div class="sysrow"><dt>Firmware</dt><dd id="si-firmware">–</dd><dd id="si-firmware-date" class="sub muted"></dd></div>
+            <div class="sysrow"><dt>DroboApps</dt><dd id="si-droboapps">–</dd></div>
+          </dl>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">Capacity</div>
+          <div class="cap-body">
+            <div class="cap-bar" id="cap-bar">
+              <div class="cap-fill" id="cap-fill"></div>
+              <div class="cap-marker yellow" id="cap-yellow" title="Yellow threshold"></div>
+              <div class="cap-marker red" id="cap-red" title="Red threshold"></div>
+            </div>
+            <div class="cap-legend">
+              <span><b id="cap-used">–</b> used</span>
+              <span><b id="cap-free">–</b> free</span>
+              <span><b id="cap-total">–</b> total</span>
+            </div>
+            <div class="cap-pct muted" id="cap-pct"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head th-head">Network throughput
+            <a href="/storage" class="th-link">details →</a>
+          </div>
+          <div class="th-body">
+            <div class="th-now">
+              <span class="th-metric"><span class="th-arrow rx">↓</span><b id="tp-mini-rx">–</b><span class="th-cap muted">read</span></span>
+              <span class="th-metric"><span class="th-arrow tx">↑</span><b id="tp-mini-tx">–</b><span class="th-cap muted">write</span></span>
+              <span id="tp-mini-state" class="th-state muted"></span>
+            </div>
+            <div id="tp-mini-chart" class="th-chart"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head th-head">System
+            <a href="/hardware" class="th-link">details →</a>
+          </div>
+          <div class="th-body">
+            <div class="sys-mini">
+              <div class="sys-metric">
+                <div class="sys-metric-top"><span class="sys-cap muted">CPU</span><b id="sys-cpu">–</b></div>
+                <div class="mini-meter"><div id="sys-cpu-bar" class="mini-meter-fill"></div></div>
+              </div>
+              <div class="sys-metric">
+                <div class="sys-metric-top"><span class="sys-cap muted">RAM</span><b id="sys-ram">–</b></div>
+                <div class="mini-meter"><div id="sys-ram-bar" class="mini-meter-fill"></div></div>
+              </div>
+            </div>
+            <div class="sys-mini-foot muted">load <b id="sys-load">–</b> · up <span id="sys-uptime">–</span><span id="sys-state" class="th-state"></span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="statusbar">
+      <span id="freshness" class="muted">–</span>
+      <span class="sep">·</span>
+      <span class="muted">source <code id="src-host">{{ drobo_host }}</code>:5000</span>
+      <span class="sep">·</span>
+      <a href="/api/status" target="_blank" rel="noopener">JSON</a>
+    </footer>
+  </main>
+
+  <script>
+    window.DROBO_CONFIG = {
+      host: {{ drobo_host | tojson }},
+      pollInterval: {{ poll_interval | tojson }}
+    };
+  </script>
+  <script src="{{ url_for('static', filename='charts.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

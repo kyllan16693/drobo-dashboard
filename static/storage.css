@@ -1,0 +1,40 @@
+.cap-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.cap-grid .panel { margin-bottom: 0; }
+
+.pie-body { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.pie { flex: 0 0 200px; max-width: 200px; }
+.pie-body .legend { flex: 1; min-width: 180px; }
+
+.toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-weight: 400; font-size: 12px; color: var(--muted); cursor: pointer;
+}
+.toggle input { accent-color: var(--blue); cursor: pointer; }
+
+.usage-legend { margin-top: 14px; }
+#usage-note { margin: 12px 0 0; }
+
+.legend .lg-total { padding-bottom: 8px; margin-bottom: 2px; border-bottom: 1px solid var(--border-soft); }
+.legend .lg-total .lg-label { color: var(--text); font-weight: 600; }
+.legend .lg-total .lg-val { font-size: 15px; }
+
+/* Throughput */
+.tp-now { display: flex; align-items: center; gap: 26px; margin-bottom: 12px; flex-wrap: wrap; }
+.tp-metric { display: flex; align-items: baseline; gap: 8px; }
+.tp-metric b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.tp-label { color: var(--muted); font-size: 12px; }
+.tp-arrow { font-weight: 800; font-size: 15px; }
+.tp-arrow.rx { color: var(--blue); }
+.tp-arrow.tx { color: var(--ok); }
+.tp-metric #tp-iface { margin-left: auto; }
+
+.chart-box { min-height: 90px; }
+.range-btns { display: flex; gap: 6px; }
+
+@media (max-width: 840px) {
+  .cap-grid { grid-template-columns: 1fr; }
+}

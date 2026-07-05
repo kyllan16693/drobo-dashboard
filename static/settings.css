@@ -1,0 +1,96 @@
+:root {
+  --bg: #0e1013;
+  --panel: #16191e;
+  --panel-2: #1c2027;
+  --line: #262b33;
+  --text: #e7ebf0;
+  --muted: #8a93a0;
+  --green: #7cb342;
+  --led: #63d331;
+  --blue: #2ea6ff;
+  --warning: #e0a92b;
+  --critical: #e0533b;
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 50% -10%, #171b21 0%, var(--bg) 60%) fixed;
+  color: var(--text);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 60px; }
+
+.topbar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.title h1 { margin: 0; font-size: 26px; letter-spacing: .2px; }
+.subtitle { color: var(--muted); font-size: 14px; }
+
+.nav {
+  display: flex; gap: 4px; margin: 18px 0 22px;
+  border-bottom: 1px solid var(--line);
+}
+.nav a {
+  color: var(--muted); text-decoration: none; padding: 9px 14px;
+  border-bottom: 2px solid transparent; font-weight: 500;
+}
+.nav a:hover { color: var(--text); }
+.nav a.active { color: var(--text); border-bottom-color: var(--green); }
+
+.panel {
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 20px; margin-bottom: 18px;
+}
+.panel h2 { margin: 0 0 12px; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+.panel.danger { border-color: #4a2a25; }
+.panel.danger h2 { color: var(--critical); }
+
+.muted { color: var(--muted); }
+.small { font-size: 12px; font-weight: 400; }
+code { background: #0c0e11; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: 12.5px; }
+
+.tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.tag.safe { background: rgba(124,179,66,.14); color: var(--green); border: 1px solid rgba(124,179,66,.35); }
+
+.kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; }
+.kv-grid .k { color: var(--muted); }
+.kv-grid .v { color: var(--text); }
+.kv-grid .v.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.actions { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
+select, input[type="text"] {
+  background: #0c0e11; color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 11px; font-size: 14px; min-width: 160px;
+}
+input[type="text"]:focus, select:focus { outline: none; border-color: var(--blue); }
+
+.btn {
+  background: var(--green); color: #0b0d10; border: none; border-radius: 8px;
+  padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.btn:hover { filter: brightness(1.06); }
+.btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.btn.ghost:hover { color: var(--text); }
+.btn.danger-btn { background: var(--critical); color: #fff; }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+details summary { cursor: pointer; color: var(--critical); font-weight: 600; margin-bottom: 8px; }
+details[open] summary { margin-bottom: 12px; }
+.warn { color: #f0c9a8; background: rgba(224,83,59,.08); border: 1px solid #4a2a25; border-radius: 8px; padding: 10px 12px; }
+details .field { margin: 12px 0; }
+
+.result { margin-top: 12px; font-size: 13.5px; min-height: 1em; }
+.result.ok { color: var(--green); }
+.result.err { color: var(--critical); }
+
+.banner { border-radius: 10px; padding: 11px 14px; margin-bottom: 16px; font-size: 14px; }
+.banner.hidden { display: none; }
+.banner.warning { background: rgba(224,169,43,.12); border: 1px solid rgba(224,169,43,.4); color: #f0d69a; }
+.banner.critical { background: rgba(224,83,59,.12); border: 1px solid rgba(224,83,59,.4); color: #f2b3a6; }
+
+.statusbar { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin-top: 8px; }
+.sep { opacity: .5; }
