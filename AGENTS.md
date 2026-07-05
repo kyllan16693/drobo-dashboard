@@ -18,10 +18,15 @@ uv run app.py                 # serves http://127.0.0.1:8765
 curl -s localhost:8765/api/status  | head       # parsed snapshot
 curl -s localhost:8765/api/storage | head       # capacity + breakdown
 curl -s localhost:8765/api/hardware| head        # live SSH telemetry
+curl -s localhost:8765/api/widget | head       # flat JSON for Homepage customapi
 curl -s localhost:8765/healthz                    # 200 fresh / 503 stale
 ```
 
 - Config is env / `.env` (auto-loaded). See the table in the README.
+- **Production:** CT407 on homelab1 at `http://192.168.1.155:8765` — see `deploy/README.md`
+  and [`deploy/homepage/`](deploy/homepage/) for Docker + Homepage widget setup.
+- **Do not enable `DROBO_ENABLE_CONTROL=1` in prod** without explicit approval (identify/restart
+  touch the physical NAS).
 - Offline work: parse `tests/sample_5n.xml` with `drobo.parse()` — no device
   needed.
 
@@ -37,7 +42,11 @@ curl -s localhost:8765/healthz                    # 200 fresh / 503 stale
   don't crash).
 - **Persistence** — `drobo/history.py` (SQLite in `data/`, git-ignored).
 - **Control** — `drobo/control.py` (DIRNETTM, port 5001). Only safe/reversible
-  actions; gated behind `DROBO_ENABLE_CONTROL` + CSRF.
+  actions; gated behind `DROBO_ENABLE_CONTROL` + CSRF. **Keep control disabled in
+  prod** (`DROBO_ENABLE_CONTROL=0`) unless the user explicitly asks.
+- **Homepage widget** — `GET /api/widget` returns flat JSON for gethomepage
+  `customapi` (unauthenticated, LAN-only read-only telemetry). Example config in
+  `deploy/homepage/widget.example.yaml`.
 - **Frontend** — one `templates/*.html` + `static/*.{js,css}` per page, sharing
   `base.css` and the dependency-free `charts.js`.
 
