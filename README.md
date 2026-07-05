@@ -1,5 +1,13 @@
 # Drobo 5N Dashboard
 
+# THIS APP IS COMPLETELY VIBE-CODED USE AT YOUR OWN RISK
+
+# DROBO IS A BANKRUPT COMPANY AND THEIR HARDWARE IS NO LONGER SUPPORTED
+
+# I JUST WANTED TO MONITOR MY DROBO 5N SO IT DID NOT TURN INTO E-WASTE
+
+If you make a PR or change I might review it but probably best to just fork, open to suggestions tho.
+
 A small, from-scratch Python/Flask web app that revives monitoring for a
 **Drobo 5N** whose official Dashboard no longer runs on modern operating
 systems. It shows live drive health, capacity, redundancy, per-drive error
