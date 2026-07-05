@@ -16,6 +16,10 @@ _RELAYOUT_STATUS_CODES = {0x8240, 0x18240}
 _MAX_DEPTH = 64
 
 
+class DroboParseError(Exception):
+    """Raised when the status XML cannot be parsed into a model."""
+
+
 def _assert_xml_depth(xml_text: str) -> None:
     """Reject documents whose open-tag nesting exceeds ``_MAX_DEPTH``."""
     depth = 0
