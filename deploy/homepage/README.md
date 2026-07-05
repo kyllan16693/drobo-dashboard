@@ -3,6 +3,8 @@
 [gethomepage](https://gethomepage.dev/) has no native Drobo widget. Use the
 **customapi** widget against `GET /api/widget` on the drobo-dashboard container.
 
+![Drobo widget on Homepage](../../docs/homepage-widget.png)
+
 ## Apply on homelab (CT 402)
 
 1. SSH to homelab1, enter CT 402: `pct exec 402 -- bash`

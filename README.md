@@ -75,6 +75,14 @@ curl -s http://localhost:8765/api/widget
 See [`deploy/README.md`](deploy/README.md) for updates, secrets policy, and the
 Homepage widget ([`deploy/homepage/`](deploy/homepage/)).
 
+### Homepage widget
+
+The [gethomepage](https://gethomepage.dev/) **customapi** tile shows Drobo
+capacity, uptime, load, and live throughput from `GET /api/widget`. Setup and
+YAML snippet: [`deploy/homepage/README.md`](deploy/homepage/README.md).
+
+![Drobo widget on Homepage](docs/homepage-widget.png)
+
 ## Configuration
 
 Set via environment or a local `.env` (loaded automatically). **Never commit
