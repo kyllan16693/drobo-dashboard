@@ -81,6 +81,27 @@ function renderEvents(events, totals) {
   </tr>`).join("");
 }
 
+function renderUptime(data) {
+  const summary = $("uptime-summary");
+  const pct = data.uptime_pct;
+  const hoursLabel = Math.round(data.hours) + "h";
+  summary.textContent = pct == null
+    ? `Not enough history yet to compute an uptime percentage (last ${hoursLabel}).`
+    : `${pct.toFixed(2)}% reachable over the last ${hoursLabel}.`;
+
+  const tbody = $("uptime-events-table").querySelector("tbody");
+  const events = data.events || [];
+  if (!events.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="muted" style="padding:16px">No reachability changes recorded in this window.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = events.map((ev) => `<tr>
+    <td title="${esc(absTime(ev.ts))}">${esc(relTime(ev.ts))}</td>
+    <td>${ev.kind === "down" ? '<span class="change-reset">down</span>' : '<span class="change-base">recovered</span>'}</td>
+    <td class="muted">${esc(ev.detail || "")}</td>
+  </tr>`).join("");
+}
+
 function renderExplainer(ref) {
   const e = ref.error_count;
   if (!e) return;
@@ -132,15 +153,18 @@ function renderReference(ref) {
 
 async function tick() {
   try {
-    const [errRes, refRes] = await Promise.all([
+    const [errRes, refRes, upRes] = await Promise.all([
       fetch("/api/history/errors", { cache: "no-store" }),
       fetch("/api/reference", { cache: "no-store" }),
+      fetch("/api/history/reachability?hours=168", { cache: "no-store" }),
     ]);
     const data = await errRes.json();
     const ref = await refRes.json();
+    const uptime = await upRes.json();
     $("banner").className = "banner hidden";
     renderCurrent(data.current);
     renderEvents(data.events, data.totals);
+    renderUptime(uptime);
     renderExplainer(ref);
     renderReference(ref);
     const t = data.totals || {};

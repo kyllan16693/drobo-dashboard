@@ -11,6 +11,10 @@ has no I/O counters. To offer trends we persist our own observations:
 * ``throughput_samples`` — network throughput sampled over SSH (bytes/sec).
 * ``slot_error_state`` — last-seen per-drive error count, so increases are
   detected across restarts.
+* ``reachability_events`` — appended on every stale/reachable transition
+  observed by the poller ("down"/"recovered"), so `/errors`-style timelines and
+  an uptime percentage are possible for a device that never timestamps its own
+  outages.
 
 All access is guarded by a single lock over one shared connection (WAL mode);
 the volumes here are tiny so serialising is simpler and safe across the poller,
@@ -76,6 +80,14 @@ CREATE TABLE IF NOT EXISTS hardware_samples (
     disk_w_bps REAL
 );
 CREATE INDEX IF NOT EXISTS idx_hardware_ts ON hardware_samples (ts);
+
+CREATE TABLE IF NOT EXISTS reachability_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts REAL NOT NULL,
+    kind TEXT NOT NULL,
+    detail TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reachability_ts ON reachability_events (ts);
 """
 
 # Retention windows (seconds).
@@ -83,6 +95,12 @@ _CAPACITY_RETENTION = 180 * 86400
 _THROUGHPUT_RETENTION = 14 * 86400
 _HARDWARE_RETENTION = 14 * 86400
 _PRUNE_EVERY = 3600.0
+
+# daily_written() memo TTL: long enough to coalesce the near-simultaneous
+# /api/storage + /api/history/capacity calls one dashboard tick fires, short
+# enough that a fresh capacity sample (recorded on every ~15s poll) shows up
+# within a poll cycle or two.
+_DAILY_WRITTEN_CACHE_TTL = 5.0
 
 
 class History:
@@ -97,6 +115,13 @@ class History:
         self._conn.executescript(_SCHEMA)
         self._conn.commit()
         self._last_prune = 0.0
+        # Short-TTL memo for daily_written(): /api/storage (via
+        # days_until_full()) and /api/history/capacity both call this with
+        # the same `days` on every dashboard tick, fired within the same
+        # browser Promise.all — cache the (fairly expensive, GROUP-BY-day
+        # over capacity_samples) result briefly rather than compute it twice
+        # per tick. Same idea as app.py's _raw_cache TTL-coalescing pattern.
+        self._daily_written_cache: dict[int, tuple[float, list[dict]]] = {}
 
     # ------------------------------------------------------------------ #
     # Writes
@@ -168,7 +193,7 @@ class History:
                 count = int(s.get("error_count", 0))
                 make = " ".join(x for x in (s.get("vendor"), s.get("model")) if x).strip()
                 row = self._conn.execute(
-                    "SELECT last_count FROM slot_error_state WHERE serial=?", (serial,)
+                    "SELECT slot, last_count FROM slot_error_state WHERE serial=?", (serial,)
                 ).fetchone()
 
                 if row is None:
@@ -225,7 +250,7 @@ class History:
                                 "error count decreased (drive replaced or counter reset)",
                             )
                         )
-                    if count != last or slot != -1:
+                    if count != last or slot != int(row["slot"]):
                         self._conn.execute(
                             "UPDATE slot_error_state SET slot=?, last_count=?, updated=? "
                             "WHERE serial=?",
@@ -253,6 +278,24 @@ class History:
             "kind": kind,
             "note": note,
         }
+
+    def record_reachability(
+        self, kind: str, detail: str | None = None, ts: float | None = None
+    ) -> dict:
+        """Log a reachability transition ("down" or "recovered").
+
+        Returns the recorded row as a dict (same pattern as ``_insert_event``
+        for ``error_events``).
+        """
+        ts = time.time() if ts is None else ts
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO reachability_events (ts, kind, detail) VALUES (?,?,?)",
+                (ts, kind, detail),
+            )
+            self._conn.commit()
+            row_id = cur.lastrowid
+        return {"id": row_id, "ts": ts, "kind": kind, "detail": detail}
 
     def _maybe_prune(self, now: float) -> None:
         if now - self._last_prune < _PRUNE_EVERY:
@@ -303,8 +346,16 @@ class History:
 
         Positive = data net-written that day, negative = net-freed. Computed as
         the difference between each day's last sample and the previous day's.
+
+        Memoized for a few seconds per distinct ``days`` value — see the
+        ``_daily_written_cache`` note in ``__init__``.
         """
-        since = time.time() - (days + 1) * 86400
+        now = time.time()
+        cached = self._daily_written_cache.get(days)
+        if cached is not None and (now - cached[0]) < _DAILY_WRITTEN_CACHE_TTL:
+            return cached[1]
+
+        since = now - (days + 1) * 86400
         with self._lock:
             rows = self._conn.execute(
                 "SELECT strftime('%Y-%m-%d', ts, 'unixepoch', 'localtime') AS day,"
@@ -320,7 +371,9 @@ class History:
             if prev_used is not None:
                 out.append({"date": r["day"], "delta_bytes": used - prev_used, "used_end": used})
             prev_used = used
-        return out[-days:]
+        result = out[-days:]
+        self._daily_written_cache[days] = (now, result)
+        return result
 
     def error_log(self, limit: int = 200) -> list[dict]:
         with self._lock:
@@ -344,6 +397,70 @@ class History:
             "errors_added_since_tracking": int(row["added"]),
             "tracking_since": first["since"] if first else None,
         }
+
+    def reachability_log(self, limit: int = 200) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT id, ts, kind, detail FROM reachability_events"
+                " ORDER BY ts DESC, id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def uptime_pct(self, since_ts: float) -> float | None:
+        """Percent of ``[since_ts, now]`` the Drobo was considered reachable.
+
+        Walks ``reachability_events`` with ``ts >= since_ts`` in order, pairing
+        each "down" with the next "recovered" (or "now" if still down) to total
+        up the down-seconds in the window; everything else is implicitly "up".
+        An outage already in progress when the window opens (its "down" event
+        is before ``since_ts``, with no "recovered" before ``since_ts`` either)
+        must still count as down from ``since_ts`` onward — otherwise a window
+        that starts mid-outage looks like 100% uptime just because the "down"
+        event itself falls outside it. We check the most recent event strictly
+        before ``since_ts`` to seed the correct starting state.
+
+        Returns ``None`` rather than fabricating a number if tracking hadn't
+        even started by ``since_ts`` (mirrors ``daily_written()``/
+        ``error_totals()``: don't fake data for a window we have no visibility
+        into). We use the earliest ``capacity_samples`` row as the "tracking
+        began" marker, since a capacity sample is written on every successful
+        poll from process start.
+        """
+        now = time.time()
+        window = now - since_ts
+        if window <= 0:
+            return None
+        with self._lock:
+            first = self._conn.execute(
+                "SELECT MIN(ts) AS first_ts FROM capacity_samples"
+            ).fetchone()
+            first_ts = first["first_ts"] if first else None
+            if first_ts is None or first_ts > since_ts:
+                return None
+            prior = self._conn.execute(
+                "SELECT kind FROM reachability_events WHERE ts < ?"
+                " ORDER BY ts DESC, id DESC LIMIT 1",
+                (since_ts,),
+            ).fetchone()
+            rows = self._conn.execute(
+                "SELECT ts, kind FROM reachability_events WHERE ts >= ? ORDER BY ts, id",
+                (since_ts,),
+            ).fetchall()
+
+        down_seconds = 0.0
+        down_since: float | None = since_ts if prior and prior["kind"] == "down" else None
+        for r in rows:
+            if r["kind"] == "down" and down_since is None:
+                down_since = r["ts"]
+            elif r["kind"] == "recovered" and down_since is not None:
+                down_seconds += r["ts"] - down_since
+                down_since = None
+        if down_since is not None:
+            down_seconds += now - down_since
+
+        down_seconds = min(down_seconds, window)
+        return max(0.0, min(100.0, (window - down_seconds) / window * 100))
 
     def close(self) -> None:
         with self._lock:

@@ -9,6 +9,11 @@ wheels/
 # Virtual environments
 .venv
 
+# tox / pytest / pre-commit local state
+.tox/
+.pytest_cache/
+.pre-commit-cache/
+
 # Local secrets / config — never commit
 .env
 .env.*

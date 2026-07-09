@@ -16,14 +16,23 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "mypy>=1.15",
+    "pre-commit>=4.0",
     "pytest>=8.0",
     "ruff>=0.9",
-    "types-paramiko>=3.5",
+    "tox>=4.23",
+    "tox-uv>=1.16",
+    "ty>=0.0.57",
 ]
 
 [tool.setuptools.packages.find]
 include = ["drobo*"]
+
+[tool.pytest.ini_options]
+# tests/test_export.py imports the top-level app.py module (not part of the
+# installed `drobo` package), which otherwise only resolves when pytest is
+# invoked from the repo root — pin the root onto sys.path explicitly so the
+# suite runs the same regardless of invocation directory/rootdir detection.
+pythonpath = ["."]
 
 [tool.ruff]
 target-version = "py312"
@@ -39,17 +48,8 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.format]
 quote-style = "double"
 
-[tool.mypy]
-python_version = "3.12"
-files = ["drobo", "app.py", "main.py"]
-warn_return_any = true
-warn_unused_ignores = true
-check_untyped_defs = true
-no_implicit_optional = true
-strict_equality = true
-show_error_codes = true
-pretty = true
+[tool.ty.environment]
+python-version = "3.12"
 
-[[tool.mypy.overrides]]
-module = "paramiko.*"
-ignore_missing_imports = true
+[tool.ty.src]
+include = ["drobo", "app.py", "main.py"]

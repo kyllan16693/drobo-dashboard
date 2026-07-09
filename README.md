@@ -40,10 +40,13 @@ runs straight from macOS — no VM required.
   mini-panels.
 - **Storage (`/storage`)** — old-Dashboard-style **capacity pie** (used / free /
   unallocated) with a correct **BeyondRAID zone-model** breakdown of protection
-  vs. reserved-for-expansion, and capacity history.
+  vs. reserved-for-expansion, capacity history, and a **days-until-full**
+  projection from recent daily growth (omitted when usage is flat/shrinking or
+  there isn't enough history yet).
 - **Errors (`/errors`)** — timeline of per-drive `mErrorCount` changes (logged
-  locally since the device doesn't timestamp them) plus a lookup "database"
-  explaining error counts, disk-state, and rotational-speed codes.
+  locally since the device doesn't timestamp them), a lookup "database"
+  explaining error counts, disk-state, and rotational-speed codes, and an
+  **uptime panel** (reachability percentage + recent down/recovered events).
 - **Hardware (`/hardware`)** — CPU (overall + per-core), memory, load, uptime,
   disk I/O, and top processes, over time. Sourced over SSH.
 - **Details (`/stats`)** — every field we can extract, raw and decoded.
@@ -112,6 +115,7 @@ Set via environment or a local `.env` (loaded automatically). **Never commit
 | `DROBO_HARDWARE_INTERVAL` | `5` | Hardware sample interval (s) |
 | `DROBO_DB_PATH` | `data/history.db` | SQLite history file |
 | `DROBO_ENABLE_CONTROL` | `0` | Enable the `/settings` write actions |
+| `NTFY_URL` | — | Optional ntfy push URL for reachability/error/capacity alerts; disabled if unset (see `drobo/notify.py`) |
 
 The unauthenticated NASD stream (port 5000) needs **no** credentials; only the
 throughput/hardware SSH features use `DROBO_USERNAME` / `DROBO_PASSWORD`.
@@ -128,11 +132,14 @@ throughput/hardware SSH features use `DROBO_USERNAME` / `DROBO_PASSWORD`.
 | `GET /api/storage` | capacity + BeyondRAID breakdown |
 | `GET /api/reference` | error/code lookup tables |
 | `GET /api/throughput` · `/api/hardware` | live SSH telemetry snapshots |
-| `GET /api/history/{capacity,errors,throughput,hardware}` | time series (SQLite) |
+| `GET /api/history/{capacity,errors,throughput,hardware,reachability}` | time series (SQLite) |
+| `GET /api/export/<kind>/<fmt>` | bulk export of `errors`/`capacity`/`reachability` history as `csv`/`json`; `404` JSON error on an unknown kind or fmt |
 | `GET /healthz` | `200` when fresh & reachable, else `503` |
 | `POST /settings/{identify,stop-identify,restart}` | control (CSRF + opt-in) |
 
 History endpoints accept a sanitized `?hours=` (and `?days=`/`?limit=`) query.
+`/api/storage` also includes a `days_until_full` estimate (`null` when usage
+isn't net-growing or there's no history yet).
 
 ## Architecture
 
@@ -150,7 +157,9 @@ drobo-dashboard/
 │  ├─ poller.py         background thread; caches last-good + staleness
 │  ├─ throughput.py     SSH /proc/net/dev network monitor
 │  ├─ hardware.py       SSH /proc CPU/RAM/load/IO + top monitor
-│  ├─ history.py        SQLite persistence (capacity, errors, tp, hardware)
+│  ├─ history.py        SQLite persistence (capacity, errors, tp, hardware, reachability)
+│  ├─ alerts.py         ntfy alert-transition tracking (reachability, severity, errors)
+│  ├─ notify.py         best-effort ntfy client (NTFY_URL; no-ops if unset)
 │  ├─ control.py        DIRNETTM (port 5001) identify/restart
 │  └─ rawdump.py        full field dump for /stats & /api/raw
 ├─ templates/*.html     one per page
@@ -187,8 +196,14 @@ print(status.status_label, status.used_human, "/", status.total_human)
 ## Testing / development
 
 - Offline parsing test data: `tests/sample_5n.xml`.
-- Lint/format: `uv sync --extra dev && uv run ruff check . && uv run ruff format --check .`
-- Typecheck: `uv run mypy`
+- Install dev tooling: `uv sync --extra dev`.
+- Run the test suite: `uv run pytest -q`.
+- Lint/format: `uv run ruff check . && uv run ruff format --check .`
+- Typecheck: `uv run ty check`.
+- Run everything pre-commit checks in one shot: `uv run pre-commit run --all-files`
+  (lint/format via the `astral-sh/ruff-pre-commit` mirror, typecheck via
+  `astral-sh/ty-pre-commit`).
+- Run the test suite through the `tox`/`tox-uv` env: `uv run tox`.
 - Research notes live in `docs/RESEARCH-*.md` (extraction + control protocol).
 - The dashboard has been hardened via adversarial review: XML-bomb (DTD)
   rejection, HTML-escaping/XSS safety on all device-derived strings, CSRF on
