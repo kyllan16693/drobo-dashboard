@@ -28,7 +28,12 @@ protection and ~8 TB reserved-for-expansion — not 16 TB of "protection" and
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .models import DroboStatus, human_bytes
+
+if TYPE_CHECKING:
+    from .history import History
 
 
 def _severity(used_pct: float, yellow: float, red: float) -> str:
@@ -117,3 +122,23 @@ def storage_breakdown(status: DroboStatus) -> dict:
         "redundancy_label": status.redundancy_label,
         "data_bay_count": len(data_bays),
     }
+
+
+def days_until_full(history: History, free_bytes: int, lookback_days: int = 14) -> float | None:
+    """Project how many days until the protected pool fills, from recent growth.
+
+    Averages the net per-day byte deltas from ``history.daily_written()`` —
+    however many days actually exist (no need for a full ``lookback_days`` of
+    samples; early in the app's life there may only be a few). Returns
+    ``None`` rather than a number whenever a countdown would be fabricated:
+    no history yet, or usage that's flat/net-shrinking (average <= 0) — a
+    real device can sit at 0 growth for weeks and "never" isn't a number we
+    want callers to have to special-case out of a numeric field.
+    """
+    rows = history.daily_written(days=lookback_days)
+    if not rows:
+        return None
+    avg_daily_bytes = sum(r["delta_bytes"] for r in rows) / len(rows)
+    if avg_daily_bytes <= 0:
+        return None
+    return free_bytes / avg_daily_bytes

@@ -30,6 +30,7 @@ class Poller:
         timeout: float = 5.0,
         stale_after: float | None = None,
         on_poll: Callable[[DroboStatus], None] | None = None,
+        on_result: Callable[[dict], None] | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -40,6 +41,10 @@ class Poller:
         # Optional hook called with the fresh status after every successful
         # poll (used to record history). Failures here never break polling.
         self.on_poll = on_poll
+        # Optional hook called with self.snapshot() after EVERY poll_once()
+        # call, success or failure (used to detect reachability transitions).
+        # Independent of on_poll; failures here never break polling either.
+        self.on_result = on_result
 
         self._lock = threading.Lock()
         self._status: DroboStatus | None = None
@@ -55,17 +60,23 @@ class Poller:
         except (DroboUnreachable, DroboParseError) as exc:
             with self._lock:
                 self._last_error = str(exc)
-            return
-        status.fetched_at = time.time()
-        with self._lock:
-            self._status = status
-            self._last_success = status.fetched_at
-            self._last_error = None
-        if self.on_poll is not None:
+        else:
+            status.fetched_at = time.time()
+            with self._lock:
+                self._status = status
+                self._last_success = status.fetched_at
+                self._last_error = None
+            if self.on_poll is not None:
+                try:
+                    self.on_poll(status)
+                except Exception:  # a history hiccup must never stop polling
+                    logger.exception("on_poll hook failed")
+
+        if self.on_result is not None:
             try:
-                self.on_poll(status)
-            except Exception:  # a history hiccup must never stop polling
-                logger.exception("on_poll hook failed")
+                self.on_result(self.snapshot())
+            except Exception:  # same contract as on_poll: never break polling
+                logger.exception("on_result hook failed")
 
     def start(self) -> None:
         """Start the background polling thread (no-op if already running)."""

@@ -42,6 +42,7 @@
         <div class="panel-body pie-body">
           <div id="pie" class="pie"></div>
           <div id="pie-legend" class="legend"></div>
+          <p id="days-until-full" class="muted small"></p>
         </div>
       </section>
 
@@ -99,6 +100,10 @@
       <span class="muted">source <code>{{ drobo_host }}</code></span>
       <span class="sep">·</span>
       <a href="/api/storage" target="_blank" rel="noopener">storage JSON</a>
+      <span class="sep">·</span>
+      <a href="/api/export/capacity/csv" target="_blank" rel="noopener">capacity CSV</a>
+      <span class="sep">·</span>
+      <a href="/api/export/capacity/json" target="_blank" rel="noopener">capacity export JSON</a>
     </footer>
   </main>
 

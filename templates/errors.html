@@ -50,6 +50,21 @@
     </section>
 
     <section class="panel">
+      <div class="panel-head">Uptime
+        <span class="head-note">reachability tracked by this dashboard, not the device itself</span>
+      </div>
+      <div class="panel-body">
+        <p id="uptime-summary" class="explainer-summary">Loading…</p>
+        <table class="dtable" id="uptime-events-table">
+          <thead><tr>
+            <th>When</th><th>Event</th><th>Detail</th>
+          </tr></thead>
+          <tbody><tr><td colspan="3" class="muted" style="padding:16px">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
       <div class="panel-head">Error timeline
         <span class="head-note">recorded by this dashboard — the Drobo doesn't timestamp errors</span>
       </div>
@@ -85,6 +100,14 @@
       <span id="freshness" class="muted">–</span>
       <span class="sep">·</span>
       <a href="/api/history/errors" target="_blank" rel="noopener">errors JSON</a>
+      <span class="sep">·</span>
+      <a href="/api/export/errors/csv" target="_blank" rel="noopener">errors CSV</a>
+      <span class="sep">·</span>
+      <a href="/api/export/errors/json" target="_blank" rel="noopener">errors export JSON</a>
+      <span class="sep">·</span>
+      <a href="/api/export/reachability/csv" target="_blank" rel="noopener">reachability CSV</a>
+      <span class="sep">·</span>
+      <a href="/api/export/reachability/json" target="_blank" rel="noopener">reachability export JSON</a>
       <span class="sep">·</span>
       <a href="/api/reference" target="_blank" rel="noopener">reference JSON</a>
     </footer>

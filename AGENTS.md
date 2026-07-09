@@ -79,8 +79,12 @@ These touch the physical NAS holding real data:
 
 ## Before you finish
 
-- Lint touched Python: `uv run ruff check . && uv run ruff format --check .`
-- Typecheck: `uv run mypy`
+- Run `pre-commit run --all-files` (covers `ruff check --fix` and
+  `ruff format`; installs to `~/.cache/pre-commit` on first run). Individually:
+  `uv run ruff check . && uv run ruff format --check .`
+- Typecheck: `uv run ty check`
+- Run the test suite via `uv run pytest -q`, or across the tox env with
+  `uv run tox` (uses `tox-uv` as the backend).
 - If you changed parsing or capacity math, validate against
   `tests/sample_5n.xml` and re-check the invariants above.
 - If you changed device facts, update [`docs/DROBO-5N.md`](docs/DROBO-5N.md).

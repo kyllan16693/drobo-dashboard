@@ -109,6 +109,18 @@ async function tickThroughput() {
   }
 }
 
+function renderDaysUntilFull(days) {
+  const el = $("days-until-full");
+  if (days == null || !isFinite(days)) {
+    el.textContent = "";
+    return;
+  }
+  const rounded = Math.max(0, Math.round(days));
+  el.textContent = rounded <= 0
+    ? "Projected to be full already at the current growth rate"
+    : `~${rounded} day${rounded === 1 ? "" : "s"} until full at the current growth rate`;
+}
+
 function shortDay(iso) {
   const d = new Date(iso + "T00:00:00");
   return isNaN(d) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -125,6 +137,7 @@ async function tickStorage() {
       setPill($("cap-pill"), s.breakdown.severity, s.breakdown.used_pct.toFixed(1) + "% full");
       renderPie(s.breakdown);
       renderUsage(s.breakdown);
+      renderDaysUntilFull(s.days_until_full);
       if (s.stale) {
         $("banner").className = "banner warning";
         $("banner").textContent = "Showing last known-good capacity — the Drobo hasn't responded recently.";
@@ -135,6 +148,7 @@ async function tickStorage() {
       setPill($("cap-pill"), "unknown", "no data");
       $("banner").className = "banner critical";
       $("banner").textContent = "Drobo unreachable" + (s.last_error ? ": " + s.last_error : "") + ".";
+      $("days-until-full").textContent = "";
     }
     Charts.area($("cap-chart"), [
       { values: (h.series || []).map((p) => ({ t: p.ts, v: p.used })), color: COL.ok, label: "used" },

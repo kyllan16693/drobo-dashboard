@@ -12,6 +12,8 @@ Serves a single dashboard page plus a JSON API backed by a background
 
 from __future__ import annotations
 
+import csv
+import io
 import math
 import os
 import secrets
@@ -27,7 +29,7 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 # Additive imports for the /stats details page + /api/raw endpoint.
 # Additive imports for the /settings control page (port-5001 command channel).
@@ -35,6 +37,7 @@ from drobo import DEFAULT_PORT, codes, control
 
 # Trends: local SQLite history, capacity breakdown, reference tables, and the
 # SSH-based network throughput monitor.
+from drobo import alerts as alerts_mod
 from drobo import reference as reference_mod
 from drobo import storage as storage_mod
 from drobo.client import DroboUnreachable, read_raw
@@ -131,9 +134,60 @@ HARDWARE_INTERVAL = _env_float("DROBO_HARDWARE_INTERVAL", 5.0)
 DB_PATH = os.environ.get("DROBO_DB_PATH") or str(Path(__file__).with_name("data") / "history.db")
 history = History(DB_PATH)
 
+# Optional ntfy push notifications (drobo/notify.py reads this directly at
+# call time; kept here too just for readability alongside the other config).
+NTFY_URL = os.environ.get("NTFY_URL") or None
+
+# Per-process alert-transition state (reachability + capacity severity). See
+# drobo/alerts.py for the transition logic this drives.
+_alert_state = alerts_mod.AlertState()
+
+# Fixed column list per export kind (rather than trusting dict keys of row 0,
+# which would break/omit columns on an empty export) — see /api/export below.
+_EXPORT_COLUMNS = {
+    "errors": [
+        "id",
+        "ts",
+        "slot",
+        "serial",
+        "make",
+        "prev_count",
+        "new_count",
+        "delta",
+        "kind",
+        "note",
+    ],
+    "capacity": ["ts", "used", "free", "total", "unallocated"],
+    "reachability": ["id", "ts", "kind", "detail"],
+}
+
+# Leading characters that spreadsheet apps (Excel, Sheets, LibreOffice) treat
+# as the start of a formula when a CSV cell is opened. Several exported
+# fields (drive vendor/model/serial in "errors") ultimately come from the
+# Drobo's own unauthenticated NASD stream — the same untrusted-input class
+# AGENTS.md already requires escaping for HTML — so a spoofed/malicious
+# device could otherwise smuggle a formula into a cell that later executes
+# when an operator opens the export. Prefixing with a single quote is the
+# standard neutralization and is invisible/inert in the exported value.
+_CSV_FORMULA_TRIGGERS = ("=", "+", "-", "@")
+
+
+def _csv_safe_row(row: dict, columns: list[str]) -> dict:
+    safe = {}
+    for col in columns:
+        val = row.get(col)
+        if isinstance(val, str) and val.startswith(_CSV_FORMULA_TRIGGERS):
+            val = "'" + val
+        safe[col] = val
+    return safe
+
 
 def _record_history(status) -> None:
-    """Poller hook: persist a capacity sample + detect new drive errors."""
+    """Poller hook: persist a capacity sample + detect new drive errors.
+
+    Also raises ntfy alerts on a transition into capacity-critical severity
+    and on each new/baseline drive-error event (skips benign "reset" events).
+    """
     breakdown = storage_mod.storage_breakdown(status)
     history.record_capacity(
         breakdown["used_bytes"],
@@ -142,6 +196,8 @@ def _record_history(status) -> None:
         breakdown["unallocated_bytes"],
         ts=status.fetched_at,
     )
+    alerts_mod.check_capacity_severity(_alert_state, breakdown["severity"], breakdown["used_pct"])
+
     events = history.sync_errors([s.to_dict() for s in status.slots], ts=status.fetched_at)
     for ev in events:
         if ev["kind"] == "increase":
@@ -149,9 +205,22 @@ def _record_history(status) -> None:
                 f"[drobo] NEW drive errors: slot {ev['slot']} {ev['make']} "
                 f"{ev['prev_count']} -> {ev['new_count']} (+{ev['delta']})"
             )
+    alerts_mod.notify_error_events(events)
 
 
-poller = Poller(DROBO_HOST, DROBO_PORT, interval=POLL_INTERVAL, on_poll=_record_history)
+def _check_alerts(snap: dict) -> None:
+    """Poller ``on_result`` hook: fires after EVERY poll, success or failure.
+
+    Detects reachability (stale/reachable) transitions, persists them to the
+    reachability log, and raises an ntfy alert on each transition. See
+    drobo/alerts.py:check_reachability for the transition/dedup logic.
+    """
+    alerts_mod.check_reachability(_alert_state, snap, history)
+
+
+poller = Poller(
+    DROBO_HOST, DROBO_PORT, interval=POLL_INTERVAL, on_poll=_record_history, on_result=_check_alerts
+)
 
 throughput = ThroughputMonitor(
     DROBO_HOST,
@@ -320,13 +389,15 @@ def create_app() -> Flask:
                     "last_error": snap["last_error"],
                 }
             )
+        breakdown = storage_mod.storage_breakdown(status_obj)
         return jsonify(
             {
                 "available": True,
                 "reachable": snap["reachable"],
                 "stale": snap["stale"],
                 "fetched_at": snap["last_success"],
-                "breakdown": storage_mod.storage_breakdown(status_obj),
+                "breakdown": breakdown,
+                "days_until_full": storage_mod.days_until_full(history, breakdown["free_bytes"]),
             }
         )
 
@@ -370,6 +441,57 @@ def create_app() -> Flask:
                 "events": history.error_log(limit=_req_int("limit", 200, lo=1, hi=1000)),
                 "totals": history.error_totals(),
             }
+        )
+
+    @app.route("/api/history/reachability")
+    def api_history_reachability():
+        hours = _req_hours(24.0)
+        since = time.time() - hours * 3600
+        return jsonify(
+            {
+                "since": since,
+                "hours": hours,
+                "events": history.reachability_log(limit=_req_int("limit", 200, lo=1, hi=1000)),
+                "uptime_pct": history.uptime_pct(since),
+            }
+        )
+
+    @app.route("/api/export/<kind>/<fmt>")
+    def api_export(kind: str, fmt: str):
+        # Bulk CSV/JSON dump of one of the local history tables, for offline
+        # analysis. Path segments (not query params) so both are trivially
+        # validated up front — an unknown kind/fmt is a 404 with a JSON body,
+        # matching the rest of this API's "never leak an HTML error page"
+        # philosophy (see /api/raw above).
+        columns = _EXPORT_COLUMNS.get(kind)
+        if columns is None or fmt not in ("csv", "json"):
+            return jsonify({"error": f"unknown export kind/fmt: {kind}/{fmt}"}), 404
+
+        # Bulk exports, not paginated views — cap high enough that the DB's
+        # own retention (see history.py's _*_RETENTION consts) is the real
+        # limit, not this number, so an export can never silently truncate
+        # without any indication.
+        if kind == "errors":
+            rows = history.error_log(limit=1_000_000)
+        elif kind == "capacity":
+            # since_ts=0 + a high max_points means _downsample is a no-op in
+            # practice (the DB's own 180-day retention at the default 15s
+            # poll interval tops out well under this).
+            rows = history.capacity_series(since_ts=0, max_points=2_000_000)
+        else:
+            rows = history.reachability_log(limit=1_000_000)
+
+        if fmt == "json":
+            return jsonify({"kind": kind, "rows": rows})
+
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=columns, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(_csv_safe_row(row, columns) for row in rows)
+        return Response(
+            buf.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={kind}.csv"},
         )
 
     @app.route("/api/reference")
@@ -509,7 +631,7 @@ def main() -> None:
     print(f"Drobo dashboard: http://{WEB_HOST}:{WEB_PORT}  (polling {DROBO_HOST}:{DROBO_PORT})")
     print(f"  throughput: {tp['state']}{tp_err}")
     print(f"  hardware:   {hw['state']}{hw_err}")
-    app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
+    app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False, threaded=True)
 
 
 if __name__ == "__main__":
